@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Parse by OCR</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
+    <style>
+      .loader {
+        border: 16px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 16px solid #3498db;
+        width: 50px;
+        height: 50px;
+        animation: spin 2s linear infinite;
+        position: absolute; 
+        top: 30%; left: 50%; z-index:2;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      </style>
+  </head>
+
+  <body>
+
+    <div id="loader" class="loader" style="display: none;"></div>
+
+    <div class="w3-cell-row">
+
+      <div class="w3-container w3-cell" >
+        <canvas id="imcanvback" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-1;" ></canvas>
+        <canvas id="imcanv" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0;" ></canvas>
+
+      </div>
+
+      <div class="w3-container w3-cell" style="position: relative; left:700px">
+        <div class="w3-container">
+          <p>Select scanned pdf file:
+          <input type="file" id="docfile" class="w3-input"></p>
+        </div>
+        <br/>
+        <div class="w3-container">
+          <input type="button" onclick='ui.preload()' class="w3-btn w3-round w3-light-grey" value="Show Image">
+          <input type="button" id="firstrun_bt" onclick='ui.submit("firstrun")' class="w3-btn w3-round w3-light-grey" value="Test Run" disabled>
+          <input type="button" id="totalrun_bt" onclick='ui.submit("totalrun")' class="w3-btn w3-round w3-light-grey" value="Parse to files"  disabled>
+        </div>
+        <br>
+        <div class="w3-container">
+          <table>
+            <tbody>
+              <tr>
+                <td>Color Enhance rate</td>
+                <td><input type="number" id="colore" value="0" class="w3-input"></td>
+              </tr>
+              <tr>
+                <td>Brightness Enhance Rate</td>
+                <td><input type="number" id="brightnesse" value="20" class="w3-input"></td>
+              </tr>
+              <tr>
+                <td>Sharpness Enhance Rate</td>
+                <td><input type="number" id="sharpnesse" value="10" class="w3-input"></td>
+              </tr>
+              <tr>
+                <td>Box Blur Pixel Radius</td>
+                <td><input type="number" id="boxblur" value="1" class="w3-input"></td>
+              </tr>
+              <tr>
+                <td>Scanned DPI rate</td>
+                <td><input type="number" id="dpirate" value="400" class="w3-input"></td>
+              </tr>
+            </tbody>
+          </table> 
+        </div>
+        <br>
+        <div class="w3-container">
+          <p>Number identified: <b><span id="firstrun_num"></span></b></p>
+          <canvas id="firstrun_canv" style="border:1px solid #000000; padding: 0px;"></canvas>
+        </div>
+        <div class="w3-container" style="display: none;">
+          <table>
+            <tbody>
+              <tr>
+                <td>StartX&nbsp;</td>
+                <td id="startx"></td>
+              </tr>
+              <tr>
+                <td>StartY&nbsp;</td>
+                <td id="starty"></td>
+              </tr>
+              <tr>
+                <td>EndX</td>
+                <td id="endx"></td>
+              </tr>
+              <tr>
+                <td>EndY</td>
+                <td id="endy"></td>
+              </tr>
+            </tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal_out" class="w3-modal w3-animate-opacity">
+      <div class="w3-modal-content w3-card-4" style="width: 50%">
+        <header class="w3-container w3-light-grey" style="text-align: center"> 
+          <span onclick="document.getElementById('modal_out').style.display='none'" class="w3-btn w3-large w3-display-topright">&times;</span>
+          <h3 id="header_out">Modal Header</h3>
+        </header>
+        <div class="w3-container">
+          <p id="body_out"></p>
+        </div>
+        <footer class="w3-container w3-light-grey">
+        </footer>
+      </div>
+    </div>
+    
+  </body>
+
+  <script src='canvas.js'></script>
+  <script src='uiclient.js'></script>
+
+</html>
