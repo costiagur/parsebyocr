@@ -100,14 +100,14 @@ class webserv(http.server.BaseHTTPRequestHandler):
                 #logging.error(msg)
             
             else:
-                msg = onepage.onepage(querystr['docfile'],querystr['dpirate'])
+                msg = onepage.onepage(querystr['docfile'],querystr['hsa'],querystr['vsa'],querystr['dpirate'])
             #
         elif querystr['request'] == 'prepare':
             if querystr['docfile'] == b'': #if no file was added, don't delete it
                 msg = 'No file uploaded'
             
             else:
-                msg = pars2files.pars2files(querystr['reqtype'],querystr['docfile'],querystr['ratiox1'],querystr['ratioy1'],querystr['ratiox2'],querystr['ratioy2'],querystr['colore'],querystr['brightnesse'],querystr['sharpnesse'],querystr['boxblur'],querystr['dpirate'])
+                msg = pars2files.pars2files(querystr['reqtype'],querystr['docfile'],querystr['ratiox1'],querystr['ratioy1'],querystr['ratiox2'],querystr['ratioy2'],querystr['hsa'],querystr['vsa'],querystr['colore'],querystr['brightnesse'],querystr['sharpnesse'],querystr['contraste'],querystr['boxblur'],querystr['dpirate'])
             #
         #
                

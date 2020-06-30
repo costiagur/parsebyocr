@@ -35,11 +35,17 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     fdata.append("ratioy2",ratioy2);
 
+    fdata.append("hsa",document.getElementById("hsa").value);
+
+    fdata.append("vsa",document.getElementById("vsa").value);
+
     fdata.append("colore",Number(document.getElementById("colore").value)/10);
 
     fdata.append("brightnesse",Number(document.getElementById("brightnesse").value)/10);
 
     fdata.append("sharpnesse",Number(document.getElementById("sharpnesse").value)/10);
+
+    fdata.append("contraste",Number(document.getElementById("contraste").value)/10);
 
     fdata.append("boxblur",document.getElementById("boxblur").value);
 
@@ -103,6 +109,10 @@ ui.preload = function(){ //request can be insert or update
 
     fdata.append("request",'preload'); //get first page for showing
 
+    fdata.append("hsa",document.getElementById("hsa").value);
+
+    fdata.append("vsa",document.getElementById("vsa").value);
+
     fdata.append("dpirate",document.getElementById("dpirate").value);
 
     fdata.append("docfile",document.getElementById("docfile").files[0]);
@@ -134,8 +144,7 @@ ui.preload = function(){ //request can be insert or update
 
                   }, false);
 
-                img.src = '.\\demo\\demopage.png'
-                
+                img.src = '.\\demo\\' + this.responseText + '.png'  
             }
         }
     };
