@@ -71,7 +71,7 @@ class webserv(http.server.BaseHTTPRequestHandler):
 
         findfile = postb.find(b'\r\n\r\n',findbyte) #find last \r\n\r\n that go after content-type but before the file body
 
-        print(findfile)
+        #print(findfile)
 
         if findfile == -1:
             posstnofileb = postb #if no file was sent than the entire body should be converted to string
@@ -97,24 +97,25 @@ class webserv(http.server.BaseHTTPRequestHandler):
         if querystr['request'] == 'preload':
             if querystr['docfile'] == b'': #if no file was added, stop processing
                 msg = 'No file uploaded'
-                #logging.error(msg)
+                msgb = msg.encode() #convert to bytes to be sent
             
             else:
-                msg = onepage.onepage(querystr['docfile'],querystr['hsa'],querystr['vsa'],querystr['dpirate'])
+                msg = onepage.onepage(querystr['docfile'],querystr['rollangle'],querystr['hsa'],querystr['vsa'],querystr['dpirate'])
+                msgb = msg.encode() #convert to bytes to be sent
             #
         elif querystr['request'] == 'prepare':
             if querystr['docfile'] == b'': #if no file was added, don't delete it
                 msg = 'No file uploaded'
+                msgb = msg.encode() #convert to bytes to be sent
+                
             
             else:
-                msg = pars2files.pars2files(querystr['reqtype'],querystr['docfile'],querystr['ratiox1'],querystr['ratioy1'],querystr['ratiox2'],querystr['ratioy2'],querystr['hsa'],querystr['vsa'],querystr['colore'],querystr['brightnesse'],querystr['sharpnesse'],querystr['contraste'],querystr['boxblur'],querystr['dpirate'])
+                msgb = pars2files.pars2files(querystr['reqtype'],querystr['docfile'],querystr['ratiox1'],querystr['ratioy1'],querystr['ratiox2'],querystr['ratioy2'],querystr['rollangle'],querystr['hsa'],querystr['vsa'],querystr['colore'],querystr['brightnesse'],querystr['sharpnesse'],querystr['contraste'],querystr['boxblur'],querystr['dpirate'])
             #
         #
                
         self._set_headers() #set headers of response
         
-        msgb = msg.encode() #convert to bytes to be sent
-
         self.wfile.write(msgb) #send bytes = write to socket
 
         return

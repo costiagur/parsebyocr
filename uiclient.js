@@ -35,6 +35,8 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     fdata.append("ratioy2",ratioy2);
 
+    fdata.append("rollangle",document.getElementById("rollangle").value);
+
     fdata.append("hsa",document.getElementById("hsa").value);
 
     fdata.append("vsa",document.getElementById("vsa").value);
@@ -86,8 +88,8 @@ ui.submit = function(reqtype){ //request can be insert or update
                 }
 
                 else if(reqtype=='totalrun'){
-                    ui.showmodal('Files Prepared','Files Prepared');
-                    window.open('.\\result\\','_blank')
+                    //ui.showmodal('Files Prepared','Files Prepared');
+                    ui.download('result.zip',this.responseText)
                 }  
             }
        }
@@ -108,6 +110,8 @@ ui.preload = function(){ //request can be insert or update
     var canvwidth = imcanvback.width;
 
     fdata.append("request",'preload'); //get first page for showing
+
+    fdata.append("rollangle",document.getElementById("rollangle").value);
 
     fdata.append("hsa",document.getElementById("hsa").value);
 
@@ -167,4 +171,23 @@ ui.showmodal = function(header,body){
             document.getElementById("modal_out").style.display='none';
         },3000);
     }
+}
+
+//********************************************************************************************* */
+ui.download = function(filename, filetext){
+
+    var a = document.createElement("a");
+
+    document.body.appendChild(a);
+
+    a.style = "display: none";
+
+    a.href = 'data:application/octet-stream;base64,' + filetext;
+
+    a.download = filename;
+
+    a.click();
+
+    document.body.removeChild(a);
+
 }
