@@ -7,9 +7,11 @@ import os
 import random
 import json
 import math
+import zipfile
+import base64
 from pdf2image import (convert_from_path, convert_from_bytes)
 
-def do_ocr (img,x1,y1,x2,y2,hsa=0,vsa=0,colore=0.0,brightnesse=1.0,sharpnesse=1.0,contraste=1.0,boxblur=0):
+def do_ocr (img,x1,y1,x2,y2,rollangle=0,hsa=0,vsa=0,colore=0.0,brightnesse=1.0,sharpnesse=1.0,contraste=1.0,boxblur=0):
 
     if hsa > 90:
         hsa = 90
@@ -22,12 +24,18 @@ def do_ocr (img,x1,y1,x2,y2,hsa=0,vsa=0,colore=0.0,brightnesse=1.0,sharpnesse=1.
         vsa = -90
     #    
 
+    if rollangle != 0:
+        imgrolled = img.rotate(rollangle)
+    else:
+        imgrolled = img
+    #
+
     if hsa != 0 or vsa != 0:
         skew = (1,math.tan(hsa*math.pi/180),0,math.tan(vsa*math.pi/180),1,0)
 
-        imgskew = img.transform((img.size[0],img.size[1]),Image.AFFINE,skew)
+        imgskew = imgrolled.transform((imgrolled.size[0],imgrolled.size[1]),Image.AFFINE,skew)
     else:
-        imgskew = img
+        imgskew = imgrolled
     #   
     
     imgcrop = imgskew.crop((x1*imgskew.size[0],y1*imgskew.size[1],x2*imgskew.size[0],y2*imgskew.size[1]))
@@ -75,7 +83,7 @@ def do_ocr (img,x1,y1,x2,y2,hsa=0,vsa=0,colore=0.0,brightnesse=1.0,sharpnesse=1.
     return (ocr_nums,img_blur)
 #
 
-def pars2files(reqtype,scanfile,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur,dpirate=400):
+def pars2files(reqtype,scanfile,x1,y1,x2,y2,rollangle,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur,dpirate=400):
 
     x1 = float(x1)
     y1 = float(y1)
@@ -94,6 +102,7 @@ def pars2files(reqtype,scanfile,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpness
         y1 = midval
     #
 
+    rollangle = int(rollangle)
     hsa = int(hsa)
     vsa = int(vsa)
     colore = float(colore)
@@ -109,7 +118,7 @@ def pars2files(reqtype,scanfile,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpness
 
         images = convert_from_bytes(scanfile,dpi=dpirate,output_folder=".\\drafts",single_file=True)
 
-        firstnum,firstimg = do_ocr(images[0],x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur)
+        firstnum,firstimg = do_ocr(images[0],x1,y1,x2,y2,rollangle,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur)
 
         random.seed()
 
@@ -127,7 +136,9 @@ def pars2files(reqtype,scanfile,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpness
             os.unlink(entry.path)
         #
 
-        return json.dumps(repdict)
+        msg = json.dumps(repdict)
+
+        return msg.encode() 
     #
     
     elif reqtype=='totalrun':
@@ -141,11 +152,11 @@ def pars2files(reqtype,scanfile,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpness
 
         for img in images:
 
-            res = do_ocr(img,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur)
+            res = do_ocr(img,x1,y1,x2,y2,rollangle,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur)
 
             if res[0]=='':
                 for incr in [0.01,0.02,0.04,0.05]:
-                    res = do_ocr(img,x1*(1-incr),y1*(1-incr),x2*(1+incr),y2*(1+incr),hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur)
+                    res = do_ocr(img,x1*(1-incr),y1*(1-incr),x2*(1+incr),y2*(1+incr),rollangle,hsa,vsa,colore,brightnesse,sharpnesse,contraste,boxblur)
                     if res[0] != '':
                         break                
                     #
@@ -171,6 +182,30 @@ def pars2files(reqtype,scanfile,x1,y1,x2,y2,hsa,vsa,colore,brightnesse,sharpness
             os.unlink(entry.path)
         #
 
-        return '1'
+        randnum = str(random.randint(1000,10000))
+
+        zipname = randnum + '.zip'
+
+        resf = zipfile.ZipFile(file = zipname, mode='a')
+
+        for entry in os.scandir(r'.\result'):
+            if entry.name.find('.pdf'):
+                resf.write(entry)
+            #
+            os.unlink(entry.path)
+        #
+
+        resf.close()
+
+        with open(zipname,mode='rb') as resfile:
+            resread = resfile.read()
+        #
+        
+        resf64 = base64.b64encode(resread)
+
+        os.unlink(zipname)
+
+        return resf64
+        
     #
 #
