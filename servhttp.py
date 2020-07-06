@@ -1,59 +1,97 @@
 import http.server
-import urllib
-import os
-import time
 import onepage
 import pars2files
-
-#logging.basicConfig(filename=os.path.dirname(os.path.realpath(__file__))+'\\log\\servhttp.log',format='%(levelname)s in %(funcName)s, %(asctime)s: %(message)s',level=logging.DEBUG)
 
 class webserv(http.server.BaseHTTPRequestHandler):
 
     def _set_headers(self):
         self.send_response(200) 
-        self.send_header('Content-Type', 'text/html') 
-        self.send_header('Access-Control-Allow-Origin', self.headers['Origin']) #local file sends in origin 'null' req header. therefore the compatible response header  
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Access-Control-Allow-Origin', self.headers['Origin']) #local file sends origin header 'null'. 
+        self.send_header('Vary','Origin')
         self.end_headers()
     #
 
-    def _post_prepare(self,boundary,poststr):
+
+    def _post_parse(self,boundary,postb):
 
         resdict = dict()
-        delimiter1 = boundary + '\r\nContent-Disposition: form-data; name='
-        delimiter1len = len(delimiter1)
-        delimiter2 = '\r\n\r\n'
+        delimiter1 = (boundary + '\r\nContent-Disposition: form-data; name=').encode()
+        delimiter1len = len(delimiter1)        
+        
+        delimiter2 = b'\r\n\r\n'
         delimiter2len = len(delimiter2)
 
-        postprefile = poststr.split('filename=')[0] #get everything till filename= string
+        filename_start_delm = ('; filename=').encode()
+        filename_start_delmlen = len(filename_start_delm)
 
-        for i in range(0,len(postprefile),1):
-            startname = postprefile.find(delimiter1,i)
-            endname = postprefile.find(delimiter2,startname)
-            endval = postprefile.find(delimiter1,endname)
+        filename_end_delm = ('Content-Type:').encode()
+
+        boundary = boundary.encode()
+
+        totalcount = postb.count(boundary)
+
+        boundlist = [1,]
+
+        startpoint = 1
+
+        for i in range(1,totalcount,1):
+            where = postb.find(boundary,startpoint)
+            boundlist.append(where)
+            startpoint = where + len(boundary)
+            i=i
+        # 
+
+        #print(boundlist)
+
+        for start_headers in boundlist[0:-1]:
+
+            end_headers = postb.find(delimiter2,start_headers) #find the end of input header data
             
-            if endname > startname and startname != -1:
-                resdict[postprefile[(startname+delimiter1len):(endname)].strip('\"')] = postprefile[(endname+delimiter2len):(endval-1)].strip('\r') 
-                # value taken should not include \r
-            #
-            else:
-                break
-            #
-        #
-        
-        if poststr.find('filename=',0) > -1:
-            startfilename = poststr.find('filename=',0)
-            endfilename = poststr.find('\r\n',startfilename+9)
-            resdict['filename'] = poststr[startfilename+9:endfilename].strip('\"')
-        #      
+            filename_start = postb.find(filename_start_delm,start_headers,end_headers) #end of name
 
-        #print(resdict)
+            filename_end = postb.find(filename_end_delm,start_headers,end_headers) #end of filename
+
+            #print("start_headers: %s end_headers %s filename_start %s filename_end %s" % (start_headers,end_headers,filename_start,filename_end))
+
+            if start_headers == boundlist[len(boundlist)-2]:# in case of last input
+                endval = boundlist[len(boundlist)-1]
+            else:
+                endval = boundlist[boundlist.index(start_headers)+1]
+            #
+
+            if filename_start != -1: # in case a file was not loaded to that inputbox, there is no filename
+                
+                filename = postb[(filename_start+filename_start_delmlen):(filename_end-3)] #without last "\r\n
+                filename = filename.decode().strip('\"')
+
+                name = postb[(start_headers+delimiter1len):filename_start]
+                name = name.decode().strip('\"')  
+            
+            else:
+                filename = ''
+
+                name = postb[(start_headers+delimiter1len):end_headers]
+                name = name.decode().strip('\"')
+            #           
+                  
+            value = postb[(end_headers+delimiter2len):(endval-2)] #without \r at the end
+                
+            if filename == '':
+                value = value.decode()
+            else:
+                pass
+            #
+
+            #print("start_headers %s name %s filename %s value %s" % (start_headers,name,filename,value))
+
+            resdict[name] = (filename,value)
+        #
 
         return resdict
     #
 
-    def do_POST(self):
-
-        #print ("headers: " +str(self.headers))
+    def do_POST(self): #Important: POST string inputs first, files last
         
         length = int(self.headers['Content-Length'])
 
@@ -61,58 +99,31 @@ class webserv(http.server.BaseHTTPRequestHandler):
 
         boundary = '--'+boundary #in headers, boundary is shorter by 2 "-" than in request body
 
-        print(length)
+        postb = self.rfile.read(length) #read entire request body. result is bytes.
 
-        postb = self.rfile.read(length) #read entire request body. result is bytes
+        querystr = self._post_parse(boundary,postb)
 
-        #print(postb)
 
-        findbyte = postb.find(b'Content-Type',0) #find where file should start after \r\n in the request body
+        #----------------- Insert Your Code Here in case of POST request --------------------------------------   
 
-        findfile = postb.find(b'\r\n\r\n',findbyte) #find last \r\n\r\n that go after content-type but before the file body
-
-        #print(findfile)
-
-        if findfile == -1:
-            posstnofileb = postb #if no file was sent than the entire body should be converted to string
-        else:
-            posstnofileb = postb[0:(findfile)] #if file was sent than everything before the file should be converted to string. file should be left bytes.
-        #
-        #postnofiles = posstnofileb.decode('windows-1255')
-        
-        postnofiles = posstnofileb.decode() #decode from bytes to string the part of body before file
-
-        #print(postnofiles)
-
-        querystr = self._post_prepare(boundary,postnofiles) #remove all headers in the body. convert to dct
-
-        if findfile == -1:
-            querystr['docfile'] = b'' #if no file was sent, the docfile argument will be empty bytes str
-        else:
-            eof = postb[findfile:length].find(boundary.encode()) #last boundary is the end of file
-            querystr['docfile'] = postb[(findfile+4):(findfile+eof-2)] #after two \r\n and till last \r\n
-        #
-        #print("Query: "+str(querystr))    
-
-        if querystr['request'] == 'preload':
-            if querystr['docfile'] == b'': #if no file was added, stop processing
+        if querystr['request'][1] == 'preload':
+            if querystr['docfile'][1] == b'': #if no file was added, stop processing
                 msg = 'No file uploaded'
                 msgb = msg.encode() #convert to bytes to be sent
-            
             else:
-                msg = onepage.onepage(querystr['docfile'],querystr['rollangle'],querystr['hsa'],querystr['vsa'],querystr['dpirate'])
+                msg = onepage.onepage(querystr['docfile'][1],querystr['rollangle'][1],querystr['hsa'][1],querystr['vsa'][1],querystr['dpirate'][1])
                 msgb = msg.encode() #convert to bytes to be sent
             #
-        elif querystr['request'] == 'prepare':
-            if querystr['docfile'] == b'': #if no file was added, don't delete it
+        elif querystr['request'][1] == 'prepare':
+            if querystr['docfile'][1] == b'': #if no file was added, don't delete it
                 msg = 'No file uploaded'
                 msgb = msg.encode() #convert to bytes to be sent
-                
-            
             else:
-                msgb = pars2files.pars2files(querystr['reqtype'],querystr['docfile'],querystr['ratiox1'],querystr['ratioy1'],querystr['ratiox2'],querystr['ratioy2'],querystr['rollangle'],querystr['hsa'],querystr['vsa'],querystr['colore'],querystr['brightnesse'],querystr['sharpnesse'],querystr['contraste'],querystr['boxblur'],querystr['dpirate'])
+                msgb = pars2files.pars2files(querystr['reqtype'][1],querystr['docfile'][1],querystr['ratiox1'][1],querystr['ratioy1'][1],querystr['ratiox2'][1],querystr['ratioy2'][1],querystr['rollangle'][1],querystr['hsa'][1],querystr['vsa'][1],querystr['colore'][1],querystr['brightnesse'][1],querystr['sharpnesse'][1],querystr['contraste'][1],querystr['boxblur'][1],querystr['dpirate'][1])
             #
         #
+
+        #-------------------------------------------------------------------------------------------------------
                
         self._set_headers() #set headers of response
         
@@ -120,11 +131,8 @@ class webserv(http.server.BaseHTTPRequestHandler):
 
         return
     #
-    
-    def do_GET(self):
-        pass
-    #
 #
+
 
 HOST = '127.0.0.1'
 PORT = 50000
@@ -132,4 +140,3 @@ PORT = 50000
 serv = http.server.HTTPServer((HOST,PORT),webserv)
 
 serv.serve_forever()
-
