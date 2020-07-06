@@ -189,7 +189,7 @@ def pars2files(reqtype,scanfile,x1,y1,x2,y2,rollangle,hsa,vsa,colore,brightnesse
         resf = zipfile.ZipFile(file = zipname, mode='a')
 
         for entry in os.scandir(r'.\result'):
-            if entry.name.find('.pdf'):
+            if entry.name.find('.pdf') != -1:
                 resf.write(entry)
             #
             os.unlink(entry.path)
