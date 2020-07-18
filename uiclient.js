@@ -7,6 +7,7 @@ ui.host = 'http://localhost:50000';
 ui.submit = function(reqtype){ //request can be insert or update
     var xhr = new XMLHttpRequest();
     var fdata = new FormData();
+    var everyin = 0;
 
     const imcanv = document.getElementById('imcanv');
 
@@ -41,8 +42,6 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     fdata.append("vsa",document.getElementById("vsa").value);
 
-    fdata.append("colore",Number(document.getElementById("colore").value)/10);
-
     fdata.append("brightnesse",Number(document.getElementById("brightnesse").value)/10);
 
     fdata.append("sharpnesse",Number(document.getElementById("sharpnesse").value)/10);
@@ -52,6 +51,8 @@ ui.submit = function(reqtype){ //request can be insert or update
     fdata.append("boxblur",document.getElementById("boxblur").value);
 
     fdata.append("dpirate",document.getElementById("dpirate").value);
+
+    fdata.append("pagesin",document.getElementById("pagesin").value);
 
     fdata.append("docfile",document.getElementById("docfile").files[0]);
 

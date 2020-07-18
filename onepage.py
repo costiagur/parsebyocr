@@ -4,12 +4,13 @@ import os
 import math
 import random
 
-def onepage(scanfile,rollangle=0,hsa=0,vsa=0,dpirate=400):
+def onepage(scanfile, rollangle=0, hsa=0, vsa=0, dpirate=400):
 
-    os.makedirs(name='demo',exist_ok=True)
-    os.makedirs(name='drafts',exist_ok=True)
+    os.makedirs(name='demo', exist_ok=True)
+    os.makedirs(name='drafts', exist_ok=True)
     
-    images = convert_from_bytes(scanfile,dpi=dpirate,output_folder=".\\drafts",single_file=True)
+    images = convert_from_bytes(scanfile, dpi=dpirate, 
+                                output_folder=".\\drafts", single_file=True)
 
     hsa = int(hsa)
     vsa = int(vsa)
@@ -33,9 +34,12 @@ def onepage(scanfile,rollangle=0,hsa=0,vsa=0,dpirate=400):
     #
 
     if hsa != 0 or vsa != 0:
-        skew = (1,math.tan(hsa*math.pi/180),0,math.tan(vsa*math.pi/180),1,0)
+        skew = (1, math.tan(hsa*math.pi/180), 0, math.tan(vsa*math.pi/180), 1, 0)
         
-        imgnew = imgnew.transform((imgnew.size[0],imgnew.size[1]),Image.AFFINE,skew)
+        imgnew = imgnew.transform((imgnew.size[0], imgnew.size[1]),
+                                  Image.AFFINE, 
+                                  skew
+                                  )
     # 
 
     random.seed()
