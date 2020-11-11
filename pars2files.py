@@ -10,6 +10,10 @@ import math
 import zipfile
 import base64
 from pdf2image import (convert_from_path, convert_from_bytes)
+import PyPDF2
+import io
+
+#********************************* DO OCR *************************************************************
 
 def do_ocr (reqtype, img, x1, y1, x2, y2, rollangle=0, hsa=0, vsa=0,
             brightnesse=1.0, sharpnesse=1.0, contraste=1.0, boxblur=0):
@@ -111,6 +115,8 @@ def do_ocr (reqtype, img, x1, y1, x2, y2, rollangle=0, hsa=0, vsa=0,
     return (ocr_nums, img_blur)
 #
 
+#************************ MAIN FUNCTION *********************************************************************
+
 def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
                 brightnesse, sharpnesse, contraste, boxblur, dpirate=400,
                 pagesin="1"):
@@ -140,6 +146,8 @@ def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
     contraste = float(contraste)
     boxblur = int(boxblur)
     
+    #**************************************************************
+
     if reqtype=='firstrun':
 
         os.makedirs(name='drafts',exist_ok=True)
@@ -183,8 +191,12 @@ def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
 
         reqpagesl = pagesin.split(",")
 
-        imageslist = convert_from_bytes(scanfile, dpi=dpirate,
-                                        output_folder=".\\drafts")
+        pdfReaderObj = PyPDF2.PdfFileReader(io.BytesIO(scanfile))
+
+        numofpages = pdfReaderObj.numPages
+
+        #imageslist = convert_from_bytes(scanfile, dpi=dpirate,
+        #                                output_folder=".\\drafts")
                                         #turn pdf to list of images
 
         if len(reqpagesl) == 1: #if user requested each X page which is the step below
@@ -195,7 +207,7 @@ def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
 
             pagenumlist = []
 
-            while i<=len(imageslist):
+            while i<= numofpages:
                  
                 pagenumlist.append(i)
 
@@ -212,8 +224,8 @@ def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
 
             while i < len(reqpagesl):
                  
-                if int(reqpagesl[i]) > len(imageslist): #page cannot be larger len(imageslist)
-                    pagenumlist.append(len(imageslist))
+                if int(reqpagesl[i]) > numofpages: #page cannot be larger len(imageslist)
+                    pagenumlist.append(numofpages)
                     break
 
                 else: 
@@ -227,21 +239,33 @@ def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
 
         print(pagenumlist)
 
-        for pagenum in pagenumlist:
+        for pagenum in pagenumlist: #for each page to be taken
 
             num_in_list = pagenum-1
 
-            img = imageslist[num_in_list]
+            pdfpage = pdfReaderObj.getPage(num_in_list) #get page
 
-            #img.show()
+            pdfWriterObj = PyPDF2.PdfFileWriter() # 1 convert page object into pdf file to convert it to img later
 
-            res = do_ocr(reqtype, img, x1, y1, x2, y2, rollangle, hsa, vsa,
+            pdfWriterObj.addPage(pdfpage) # 2
+            
+            pdfOutputFile = open(r'.\\drafts\mid.pdf', 'wb') # 3
+            
+            pdfWriterObj.write(pdfOutputFile) # 4
+            
+            pdfOutputFile.close() # 5
+
+            img = convert_from_path(r'.\\drafts\mid.pdf', dpi=dpirate, output_folder=".\\drafts", single_file=True) #get its image
+
+            res = do_ocr(reqtype, img[0], x1, y1, x2, y2, rollangle, hsa, vsa,
                         brightnesse, sharpnesse, contraste, boxblur)
 
-            img.save('result\\' + str(pagenum) + "_" + res[0] + '.pdf')
+            pdfWriterObj = PyPDF2.PdfFileWriter()
+
+            pdfWriterObj.addPage(pdfpage) #add pdf page to resulting pdf file. saved farther.
 
             if len(reqpagesl) == 1:
-                till = min(num_in_list + step,len(imageslist))
+                till = min(num_in_list + step,numofpages)
                             #take no more than last index in imageslist
             
             else:
@@ -249,29 +273,29 @@ def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
                             #if it is not the last value in pagenumlist
                     till = min(
                                 pagenumlist[pagenumlist.index(pagenum)+1]-1,
-                                len(imageslist)
+                                numofpages
                               ) 
                             #take the next param in list but no more than last page in imageslist
                 
                 else:
-                    till = len(imageslist)
+                    till = numofpages
                 #
             #
 
             if till-num_in_list > 1: 
                             # in case there should be several pages in resulting pdf
-                imgarr = imageslist[num_in_list+1 : till] 
-                            #take images from
+                i=0
                 
-                for img in imgarr:
-                    
-                    img.save('result\\' + str(pagenum) + "_" + res[0] + '.pdf',
-                            append=True
-                            ) 
-                            #turn original img to pdf
-                #
+                for i in range(num_in_list+1,till,1):
+                    pdfWriterObj.addPage(pdfReaderObj.getPage(i))
+                #                
             #
 
+            pdfOutputFile = open('result\\' + str(pagenum) + "_" + res[0] + '.pdf', 'wb')
+            
+            pdfWriterObj.write(pdfOutputFile)
+            
+            pdfOutputFile.close()
 
             print(res[0])
         #
