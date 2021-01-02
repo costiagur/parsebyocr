@@ -1,40 +1,50 @@
 ui = new Object();
 
-ui.host = 'http://localhost:50000';
+ui.host = 'http://localhost:54293'
 
 //*********************************************************************************** */
 
 ui.submit = function(reqtype){ //request can be insert or update
     var xhr = new XMLHttpRequest();
     var fdata = new FormData();
-    var everyin = 0;
+
+    var areaarr = [];
 
     const imcanv = document.getElementById('imcanv');
 
     var canvheight = imcanv.height; 
     var canvwidth = imcanv.width;
 
-    var ratiox1 = Number(document.getElementById("startx").innerHTML)/canvwidth;
-    var ratiox2 = Number(document.getElementById("endx").innerHTML)/canvwidth;
-    var ratioy1 = Number(document.getElementById("starty").innerHTML)/canvheight;
-    var ratioy2 = Number(document.getElementById("endy").innerHTML)/canvheight;
+    areaclass = document.getElementsByClassName("area"); 
 
-    console.log('ratiox1: ' + ratiox1)
-    console.log('ratioy1: ' + ratioy1)
-    console.log('ratiox2: ' + ratiox2)
-    console.log('ratioy2: ' + ratioy2)
+    for (let i=0; i < areaclass.length;i++){
+
+        if (areaclass[i].dataset["area"+i] != ''){
+            areaarr.push(areaclass[i].dataset["area"+i]);
+        }
+    }
+
+    if(areaarr.length == 0){ // in case no area button was clicked, "click" first area button 
+        ui.insertpoint(0)
+        areaarr.push(document.getElementById("area0").dataset.area0)
+    }
+
+    areastr = JSON.stringify(areaarr);
+
+    //console.log(areastr);
 
     fdata.append("request",'prepare'); //prepare files
 
     fdata.append("reqtype",reqtype); //test run ot total run
 
-    fdata.append("ratiox1",ratiox1);
+    fdata.append("areastr",areastr);
 
-    fdata.append("ratioy1",ratioy1);
+    fdata.append("canvheight",canvheight);
 
-    fdata.append("ratiox2",ratiox2);
+    fdata.append("canvwidth",canvwidth);
 
-    fdata.append("ratioy2",ratioy2);
+    //console.log("canvheight " + canvheight);
+    //console.log("canvwidth " + canvwidth);
 
     fdata.append("rollangle",document.getElementById("rollangle").value);
 
@@ -42,15 +52,13 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     fdata.append("vsa",document.getElementById("vsa").value);
 
-    fdata.append("brightnesse",Number(document.getElementById("brightnesse").value)/10);
+    fdata.append("brightnessrate",Number(document.getElementById("brightnessrate").value)/10);
 
-    fdata.append("sharpnesse",Number(document.getElementById("sharpnesse").value)/10);
-
-    fdata.append("contraste",Number(document.getElementById("contraste").value)/10);
+    fdata.append("contrastrate",Number(document.getElementById("contrastrate").value)/10);
 
     fdata.append("boxblur",document.getElementById("boxblur").value);
 
-    fdata.append("dpirate",document.getElementById("dpirate").value);
+    fdata.append("lang",document.getElementById("lang").value);
 
     fdata.append("pagesin",document.getElementById("pagesin").value);
 
@@ -70,26 +78,32 @@ ui.submit = function(reqtype){ //request can be insert or update
             }
             else{
                 if(reqtype == 'firstrun'){
+                    
+                    console.log(this.responseText);
 
                     let repobj = JSON.parse(this.responseText);
 
-                    document.getElementById("firstrun_num").innerHTML=repobj.firstnum;
-                    
-                    let firstrun_canv = document.getElementById("firstrun_canv")
-                    let ctx = firstrun_canv.getContext("2d");
-                    let img = new Image();
+                    for(i=0; i < Object.keys(repobj).length; i++){
 
-                    img.addEventListener('load', function() {
-                        ctx.clearRect(0,0,firstrun_canv.width,firstrun_canv.height) //clear existing picture
+                        if(repobj[i][1] != 0){
+                            let canv = document.getElementById('rescanv' + i)
+                            let ctx = canv.getContext("2d");
+                            let img = new Image();
 
-                        ctx.drawImage(img,0,0,img.naturalWidth,img.naturalHeight,0,0,firstrun_canv.width,firstrun_canv.height) 
-                      }, false);
-                      
-                    img.src = repobj.firstimg;       
+                            document.getElementById("ocr" + i).innerHTML = repobj[i][0];
+        
+                            img.addEventListener('load', function() {
+                                ctx.clearRect(0,0,canv.width,canv.height) //clear existing picture
+        
+                                ctx.drawImage(img,0,0,img.naturalWidth,img.naturalHeight,0,0,canv.width,canv.height) 
+                              }, false);
+                              
+                            img.src = repobj[i][1];       
+                        }    
+                    }
                 }
 
                 else if(reqtype=='totalrun'){
-                    //ui.showmodal('Files Prepared','Files Prepared');
                     ui.download('result.zip',this.responseText)
                 }  
             }
@@ -118,8 +132,6 @@ ui.preload = function(){ //request can be insert or update
 
     fdata.append("vsa",document.getElementById("vsa").value);
 
-    fdata.append("dpirate",document.getElementById("dpirate").value);
-
     fdata.append("docfile",document.getElementById("docfile").files[0]);
 
     xhr.open('POST',ui.host,true)
@@ -142,14 +154,14 @@ ui.preload = function(){ //request can be insert or update
                 img.addEventListener('load', function() {
                     ctx.drawImage(img,0,0,img.naturalWidth,img.naturalHeight,0,0,canvwidth,canvheight)
                     
-                    console.log(img.src);
+                    //console.log(img.src);
 
                     document.getElementById("firstrun_bt").disabled=false //enable buttons for further procedures
                     document.getElementById("totalrun_bt").disabled=false
 
                   }, false);
 
-                img.src = '.\\demo\\' + this.responseText + '.png'  
+                img.src = this.responseText;  
             }
         }
     };
@@ -191,4 +203,29 @@ ui.download = function(filename, filetext){
 
     document.body.removeChild(a);
 
+}
+
+//********************************************************************************************** */
+ui.insertpoint = function(num){
+
+    var rgbarr = []
+
+    rgbarr[0] = 'rgba(51, 153, 51, 0.3)'
+    rgbarr[1] = 'rgba(51, 204, 51, 0.3)'
+    rgbarr[2] = 'rgba(102, 255, 51, 0.3)'
+    rgbarr[3] = 'rgba(204, 255, 51, 0.3)'
+    rgbarr[4] = 'rgba(204, 204, 0, 0.3)'
+
+    var imcanvmiddle = document.getElementById('imcanvmiddle');
+    var ctxmid = imcanvmiddle.getContext('2d');
+    
+    var pointstr = document.getElementById("pointsxy").innerHTML;
+    var pointarr = pointstr.split(",");
+
+    ctxmid.clearRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1])
+    ctxmid.fillStyle = rgbarr[num];
+    ctxmid.fillRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1]);
+
+    document.getElementById("area"+num).dataset["area"+num] = pointstr;
+    document.getElementById("area"+num).style.color = rgbarr[num].slice(0,-4) + '1)';
 }
