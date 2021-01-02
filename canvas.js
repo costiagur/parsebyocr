@@ -12,13 +12,14 @@ canv.midy = 0;
 canv.isdrawing = false
 
 
-canv.mousedown = function(event){
+canv.mousedown = function(event){ //set first point of drawing
     
     if (canv.isdrawing == false){
 
         if(canv.i>0){
-            canv.ctx[canv.i-1].beginPath();
+            canv.ctx[canv.i-1].beginPath(); 
             canv.ctx[canv.i-1].clearRect(canv.startx, canv.starty, canv.midx-canv.startx, canv.midy-canv.starty);
+            //delete previous drawing
         }
 
         canv.isdrawing = true;
@@ -30,13 +31,10 @@ canv.mousedown = function(event){
         canv.starty = event.offsetY;
         canv.midx = canv.startx;
         canv.midy = canv.starty;
-           
-        document.getElementById("startx").innerHTML = canv.startx
-        document.getElementById("starty").innerHTML = canv.starty
     }
 }
 
-canv.mousemove = function(event){
+canv.mousemove = function(event){ //while drawing. set last point of drawing
     if (canv.isdrawing == true) {
 
         canv.ctx[canv.i].beginPath();
@@ -48,12 +46,11 @@ canv.mousemove = function(event){
         canv.ctx[canv.i].rect(canv.startx, canv.starty, canv.midx-canv.startx, canv.midy-canv.starty);
         canv.ctx[canv.i].fill();
         
-        document.getElementById("endx").innerHTML = event.offsetX
-        document.getElementById("endy").innerHTML = event.offsetY
+        document.getElementById("pointsxy").innerHTML = canv.startx + "," + canv.starty + "," + event.offsetX + "," + event.offsetY;
     }
 };
   
-canv.mouseup = function(event) {
+canv.mouseup = function(event) { //when stopped drawing
     if (canv.isdrawing == true) {
 
        

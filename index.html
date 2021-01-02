@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 
     <style>
-      .loader {
+      .loader { 
         border: 16px solid #f3f3f3;
         border-radius: 50%;
         border-top: 16px solid #3498db;
@@ -23,17 +23,27 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+
+      a:link, a:visited {
+                        background-color: white;
+                        color: black;
+                        border: 2px solid green;
+                        padding: 10px 20px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        }
       </style>
   </head>
 
   <body>
-
-    <div id="loader" class="loader" style="display: none;"></div>
+    <div id="loader" class="loader" style="display: none;"></div> <!--circle displayed while working-->
 
     <div class="w3-cell-row">
 
       <div class="w3-container w3-cell" >
-        <canvas id="imcanvback" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-1;" ></canvas>
+        <canvas id="imcanvback" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-2;" ></canvas>
+        <canvas id="imcanvmiddle" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-1;" ></canvas>
         <canvas id="imcanv" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0;" ></canvas>
 
       </div>
@@ -41,7 +51,7 @@
       <div class="w3-container w3-cell" style="position: relative; left:700px">
         <div class="w3-container">
           <p>Select scanned pdf file:
-          <input type="file" id="docfile" class="w3-input"></p>
+          <input type="file" id="docfile" class="w3-btn w3-round w3-light-grey"></p>
         </div>
         <br/>
         <div class="w3-container">
@@ -58,66 +68,64 @@
                 <td><input type="number" id="rollangle" value="0" class="w3-input"></td>
               </tr>
               <tr>
-                <td>Horizontal skew angle</td>
-                <td><input type="number" id="hsa" value="0" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>Vertical skew angle</td>
-                <td><input type="number" id="vsa" value="0" class="w3-input"></td>
+                <td>Skew angle</td>
+                <td><span><input type="number" id="hsa" value="0" style="width: 5vw; margin-right: 2vw;float:left;" class="w3-input" title="horizontal"><input type="number" id="vsa" value="0" style="width: 5vw; margin-right: 2vw;" class="w3-input" title="vertical"></span></td>
               </tr>
               <tr>
                 <td>Brightness Enhance Rate</td>
-                <td><input type="number" id="brightnesse" value="20" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>Sharpness Enhance Rate</td>
-                <td><input type="number" id="sharpnesse" value="10" class="w3-input"></td>
+                <td><input type="number" id="brightnessrate" value="20" class="w3-input"></td>
               </tr>
               <tr>
                 <td>Contrast Enhance Rate</td>
-                <td><input type="number" id="contraste" value="10" class="w3-input"></td>
+                <td><input type="number" id="contrastrate" value="10" class="w3-input"></td>
               </tr>
               <tr>
                 <td>Box Blur Pixel Radius</td>
                 <td><input type="number" id="boxblur" value="1" class="w3-input"></td>
               </tr>
               <tr>
-                <td>Scanned DPI rate</td>
-                <td><input type="number" id="dpirate" value="400" class="w3-input"></td>
+                <td>OCR Language</td>
+                <td><input type="text" id="lang" value="heb" class="w3-input"></td>
               </tr>
               <tr>
-                <td>Each x page or <br> list of pages seperated by comma</td>
+                <td>Each x page or pages seperated by comma</td>
                 <td><input type="text" id="pagesin" value="1" class="w3-input"></td>
               </tr>
             </tbody>
-          </table> 
-        </div>
-        <br>
-        <div class="w3-container">
-          <p>Number identified: <b><span id="firstrun_num"></span></b></p>
-          <canvas id="firstrun_canv" style="border:1px solid #000000; padding: 0px;"></canvas>
-        </div>
-        <div class="w3-container" style="display: none;">
+          </table>
           <table>
             <tbody>
-              <tr>
-                <td>StartX&nbsp;</td>
-                <td id="startx"></td>
+              <tr style="display: none;">
+                <td>PointsXY</td>
+                <td id="pointsxy"></td>
               </tr>
               <tr>
-                <td>StartY&nbsp;</td>
-                <td id="starty"></td>
+                <td><a class = "area" href="javascript:void(0)" id="area0" onclick="ui.insertpoint(0)" data-area0="">Area 1</a>&nbsp;</td>
+                <td id="ocr0"></td>
+                <td><canvas id="rescanv0" style="padding: 0px;"></canvas></td>  
               </tr>
               <tr>
-                <td>EndX</td>
-                <td id="endx"></td>
+                <td><a class = "area" href="javascript:void(0)" id="area1" onclick="ui.insertpoint(1)" data-area1="">Area 2</a>&nbsp;</td>
+                <td id="ocr1"></td>
+                <td><canvas id="rescanv1" style="padding: 0px;"></canvas></td>
               </tr>
               <tr>
-                <td>EndY</td>
-                <td id="endy"></td>
+                <td><a class = "area" href="javascript:void(0)" id="area2" onclick="ui.insertpoint(2)" data-area2="">Area 3</a>&nbsp;</td>
+                <td id="ocr2"></td>
+                <td><canvas id="rescanv2" style="padding: 0px;"></canvas></td>
+              </tr>
+              <tr>
+                <td><a class = "area" href="javascript:void(0)" id="area3" onclick="ui.insertpoint(3)" data-area3="">Area 4</a>&nbsp;</td>
+                <td id="ocr3"></td>
+                <td><canvas id="rescanv3" style="padding: 0px;"></canvas></td>
+              </tr>
+              <tr>
+                <td><a class = "area" href="javascript:void(0)" id="area4" onclick="ui.insertpoint(4)" data-area4="">Area 5</a>&nbsp;</td>
+                <td id="ocr4"></td>
+                <td><canvas id="rescanv4" style="padding: 0px;"></canvas></td>
               </tr>
             </tbody>
-            </table>
+          </table> 
         </div>
       </div>
     </div>

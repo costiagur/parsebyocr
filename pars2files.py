@@ -1,341 +1,285 @@
-from PIL import ImageFilter
-from PIL import Image
-from PIL import ImageEnhance
-import pytesseract
-import re
 import os
-import random
-import json
-import math
 import zipfile
-import base64
 from pdf2image import (convert_from_path, convert_from_bytes)
 import PyPDF2
 import io
+import do_ocr
+import tempfile
+import json
+import base64
 
-#********************************* DO OCR *************************************************************
+def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth, 
+    rollangle=0, brightnessrate=1.0, sharpnessrate=1.0, contrastrate=1.0, boxblur=0, enlargerate=2, 
+    hsa=0, vsa=0, dpirate=400, pagesin="1", outdir = '', langset='heb', onlynum=False):
 
-def do_ocr (reqtype, img, x1, y1, x2, y2, rollangle=0, hsa=0, vsa=0,
-            brightnesse=1.0, sharpnesse=1.0, contraste=1.0, boxblur=0):
-
-    increaselist = []
-
-    if reqtype == 'firstrun':
-        increaselist.append(0) #for the first run no increase for better ocr
-    else:                      #for total run try to get better ocr
-        increaselist.append(0)
-        increaselist.append(0.01)
-        increaselist.append(0.02)
-        increaselist.append(0.03)
-        increaselist.append(0.04)
-    #
-
-    for incr in increaselist: #increases of cropped image to catch the number
-
-        x1 = x1*(1-incr)
-        y1 = y1*(1-incr)
-        x2 = x2*(1+incr)
-        y2 = y2*(1+incr)
-
-        if hsa > 90:
-            hsa = 90
-        elif hsa < -90:
-            hsa = -90
-        #
-        if vsa > 90:
-            vsa = 90
-        elif vsa < -90:
-            vsa = -90
-        #    
-
-        if rollangle != 0:
-            imgrolled = img.rotate(rollangle)
-        else:
-            imgrolled = img
-        #
-
-        if hsa != 0 or vsa != 0:
-            skew = (1, math.tan(hsa*math.pi/180), 0, math.tan(vsa*math.pi/180), 1, 0)
-
-            imgskew = imgrolled.transform((imgrolled.size[0], imgrolled.size[1]),
-                                         Image.AFFINE,
-                                         skew
-                                         )
-        else:
-            imgskew = imgrolled
-        #   
-        
-        imgcrop = imgskew.crop((x1*imgskew.size[0], 
-                                y1*imgskew.size[1],
-                                x2*imgskew.size[0],
-                                y2*imgskew.size[1]
-                                )
-                               )
-
-        imglarge = imgcrop.resize((imgcrop.size[0]*5, imgcrop.size[1]*5))
-
-        imgcolor = ImageEnhance.Color(imglarge).enhance(0.0) #turn black and white
-
-
-        if brightnesse < 0.0 or brightnesse == 1.0:
-            imgbright = imgcolor
-        else:
-            imgbright = ImageEnhance.Brightness(imgcolor).enhance(brightnesse)
-        #
-
-
-        if sharpnesse < 0.0 or sharpnesse == 1.0:
-            imgsharp = imgbright
-        else:
-            imgsharp = ImageEnhance.Sharpness(imgbright).enhance(sharpnesse)
-        #
-    
-
-        if contraste < 0.0 or contraste == 1.0:
-            imgcontrast = imgsharp
-        else:
-            imgcontrast = ImageEnhance.Contrast(imgsharp).enhance(contraste)
-        #
-
-    
-        if boxblur < 0 or boxblur == 0:
-            img_blur = imgcontrast
-        else:
-            img_blur = imgcontrast.filter(ImageFilter.BoxBlur(boxblur))
-        #    
-
-        ocr_str = pytesseract.image_to_string(img_blur, lang='heb+eng', config='--psm 7')
-
-        ocr_nums = re.sub(r'\D', '', ocr_str)
-
-        if ocr_nums != '':
-            break
-        #
-    #    
-    return (ocr_nums, img_blur)
-#
-
-#************************ MAIN FUNCTION *********************************************************************
-
-def pars2files(reqtype, scanfile, x1, y1, x2, y2, rollangle, hsa, vsa,
-                brightnesse, sharpnesse, contraste, boxblur, dpirate=400,
-                pagesin="1"):
-
-    x1 = float(x1)
-    y1 = float(y1)
-    x2 = float(x2)
-    y2 = float(y2)
-
-    if x2 < x1: #if the picture was chosen backwards
-        midval = x2
-        x2 = x1
-        x1 = midval
-    #
-
-    if y2 < y1: #if the picture was chosen backwards
-        midval = y2
-        y2 = y1
-        y1 = midval
-    #
-
+    canvheight = float(canvheight)
+    canvwidth = float(canvwidth)
     rollangle = int(rollangle)
+    brightnessrate = float(brightnessrate)
+    sharpnessrate = float(sharpnessrate)
+    contrastrate = float(contrastrate)
+    boxblur = int(boxblur)
+    enlargerate = int(enlargerate)
+    dpirate = int(dpirate)
     hsa = int(hsa)
     vsa = int(vsa)
-    brightnesse = float(brightnesse)
-    sharpnesse = float(sharpnesse)
-    contraste = float(contraste)
-    boxblur = int(boxblur)
-    
-    #**************************************************************
 
-    if reqtype=='firstrun':
+    titlestr = 'page,' #header row in resulting csv file
+    key = 0
+    for key in areadict: #take care of points if chosen backwards
 
-        os.makedirs(name='drafts',exist_ok=True)
-        os.makedirs(name='mid',exist_ok=True)
+        titlestr = titlestr + 'area' + str(key+1) + ',' #header row in resulting csv file
 
-        images = convert_from_bytes(scanfile,dpi=dpirate,
-                                    output_folder=".\\drafts",
-                                    single_file=True)
+        midval = 0
+        #print(areadict)
 
-        firstnum,firstimg = do_ocr(reqtype, images[0], x1, y1, x2, y2, 
-                                   rollangle, hsa, vsa,brightnesse,
-                                   sharpnesse, contraste, boxblur)
-
-        random.seed()
-
-        randnum = str(random.randint(1000, 10000))
-
-        firstimg.save('mid\\' + randnum + '.png')
-                        #random number needed for js to update the test image
-
-        repdict = dict()
-
-        repdict["firstnum"] = firstnum
-
-        repdict["firstimg"] = '.\\mid\\' + randnum + '.png' 
-
-        for entry in os.scandir(r'.\drafts'):
-            os.unlink(entry.path)
+        if areadict[key][2] < areadict[key][0]: #if the picture was chosen backwards
+            midval = areadict[key][2]
+            areadict[key][2] = areadict[key][0]
+            areadict[key][0] = midval
         #
 
-        msg = json.dumps(repdict)
+        midval = 0
 
-        return msg.encode() 
+        if areadict[key][3] < areadict[key][1]: #if the picture was chosen backwards
+            midval = areadict[key][3]
+            areadict[key][3] = areadict[key][1]
+            areadict[key][1] = midval
+        #
+
+    #
+
+    titlestr = titlestr + 'link\n'
+
+    #print(areadict)
+
+    #*****************************************************************************
+
+    if reqtype == 'firstrun': #first run is when user tests quality of ocr
+
+        draftdir = tempfile.TemporaryDirectory()
+
+        images = convert_from_bytes(sourcefile,dpi=dpirate,
+                                    output_folder=draftdir.name,
+                                    single_file=True) #converts only first page into image: single_file=True
+        
+        resultdict = dict()
+
+        key = 0
+
+        for key in areadict: #keys 0-4
+            
+            print(areadict[key])
+
+            firstres, firstimg = do_ocr.do_ocr(reqtype, 
+                                        images[0], 
+                                        areadict[key][0],
+                                        areadict[key][1],
+                                        areadict[key][2],
+                                        areadict[key][3], 
+                                        canvwidth,
+                                        canvheight,
+                                        rollangle, 
+                                        brightnessrate,
+                                        sharpnessrate,
+                                        contrastrate,
+                                        boxblur,
+                                        enlargerate,
+                                        hsa, vsa,
+                                        langset='heb',
+                                        onlynum=False)
+        
+            imgpath = io.BytesIO()
+            firstimg.save(imgpath,'PNG')
+
+            imgpath.seek(0)
+
+            imgpathres = b'data:image/png;base64,' +  base64.b64encode(imgpath.read())
+
+            resultdict[key] = [firstres, imgpathres.decode()] #dictinary of each area, with its ocr and its image path
+        #
+
+        del images #destory images object
+
+        draftdir.cleanup()
+
+        return(json.dumps(resultdict))
     #
     #*******************************************************************************
 
-    elif reqtype=='totalrun':
+    elif reqtype == 'totalrun':
 
-        os.makedirs(name='drafts', exist_ok=True)
-        os.makedirs(name='result', exist_ok=True)
+        draftdir = tempfile.TemporaryDirectory()
+        resdir = tempfile.TemporaryDirectory()
+        zipdir = tempfile.TemporaryDirectory()
+        rescsvstr = ""
+                
+        rescsvstr += titlestr + "\n" # write header row into CSV file
 
-        reqpagesl = pagesin.split(",")
+        reslist = []
 
-        pdfReaderObj = PyPDF2.PdfFileReader(io.BytesIO(scanfile))
+        pagenumlist = [1] # in any case first page should be present
+
+        i = 0
+
+        pdfReaderObj = PyPDF2.PdfFileReader(io.BytesIO(sourcefile))
 
         numofpages = pdfReaderObj.numPages
 
-        #imageslist = convert_from_bytes(scanfile, dpi=dpirate,
-        #                                output_folder=".\\drafts")
-                                        #turn pdf to list of images
 
-        if len(reqpagesl) == 1: #if user requested each X page which is the step below
+        #create list of pages to cut at**********************************************
 
-            start = 1
-            i=start
-            step = int(reqpagesl[0])
+        if len(pagesin.split(",")) == 1: #if user requested each X page, like every page or every second page
 
-            pagenumlist = []
+            divisor = int(pagesin)
+            #print('divisor: ' + str(divisor))
 
-            while i<= numofpages:
-                 
-                pagenumlist.append(i)
+            #print('len(imageslist): ' + str(numofpages))
 
-                i=i+step
-            #
-        
-        else:            
-            pagenumlist = [1] #take 1 as first value anyway
-            
-            reqpagesl.sort()
+            for i in range(1,numofpages+1,1): 
 
-            i = 1 if int(reqpagesl[0])==1 else 0 
-                    #if first in pagenumlist is 1 than dont take it again     
-
-            while i < len(reqpagesl):
-                 
-                if int(reqpagesl[i]) > numofpages: #page cannot be larger len(imageslist)
-                    pagenumlist.append(numofpages)
-                    break
-
-                else: 
-                    pagenumlist.append(int(reqpagesl[i])) #add requested page number to pagelist
-                    i=i+1
+                #print('i: ' + str(i))   
+                
+                if i % divisor == 0 and (i+1) not in pagenumlist: #if devisable and not already in page list
+                
+                    if i+1 <= numofpages:
+                        pagenumlist.append(i+1) #divisable by 3, means pages 1,4,7, meaning 3+1, 6+1
+                    #                                        #anyway not more that len(imagelist)
                 #
             #
+        
+        elif len(pagesin.split(",")) > 1: # if user requested an array of pages 
+            
+            pagesarr = pagesin.split(",")
+            
+            pagesarr = list(map(int,pagesarr)) # convert values to integers
+            
+            pagesarr.sort() # sort pages in ascending order     
 
-            pagenumlist.sort()
+            for i in pagesarr: #remake pagesarr, so that will include page 1 and last page be numofpages
+                
+                if i not in pagenumlist and i <= numofpages:
+                    pagenumlist.append(i)
+
+                #
+            #
         #
 
-        print(pagenumlist)
+        #print(pagenumlist)
+
+        #Get pages to OCR ***********************************************************
 
         for pagenum in pagenumlist: #for each page to be taken
 
-            num_in_list = pagenum-1
+            reslist.clear() #start data row to CSV file
+
+            num_in_list = pagenum-1 #for index in list which start with 0
 
             pdfpage = pdfReaderObj.getPage(num_in_list) #get page
 
             pdfWriterObj = PyPDF2.PdfFileWriter() # 1 convert page object into pdf file to convert it to img later
-
+                                                # deirect ByteIO
             pdfWriterObj.addPage(pdfpage) # 2
             
-            pdfOutputFile = open(r'.\\drafts\mid.pdf', 'wb') # 3
+            pdfOutputFile = open(draftdir.name + "\\mid.pdf", 'wb') # 3
             
             pdfWriterObj.write(pdfOutputFile) # 4
             
             pdfOutputFile.close() # 5
 
-            img = convert_from_path(r'.\\drafts\mid.pdf', dpi=dpirate, output_folder=".\\drafts", single_file=True) #get its image
+            img = convert_from_path(draftdir.name + "\\mid.pdf", dpi=dpirate, output_folder=draftdir.name, single_file=True) #get its image
 
-            res = do_ocr(reqtype, img[0], x1, y1, x2, y2, rollangle, hsa, vsa,
-                        brightnesse, sharpnesse, contraste, boxblur)
+            reslist.append(str(pagenum)) #first row in cell is page number
+
+            for key in areadict: #for each selected area in the img
+            
+                firstres, firstimg = do_ocr.do_ocr(reqtype,
+                                img[0],
+                                areadict[key][0],
+                                areadict[key][1],
+                                areadict[key][2],
+                                areadict[key][3],
+                                canvwidth,
+                                canvheight,
+                                rollangle,
+                                brightnessrate,
+                                sharpnessrate,
+                                contrastrate,
+                                boxblur,
+                                enlargerate,
+                                hsa, vsa,
+                                langset,
+                                onlynum)
+
+                reslist.append(str(firstres)) #each next cell in data row
+            #
+
+            pagepath = resdir.name + '\\' + str(pagenum) + "_" + reslist[1] + '.pdf' #file named by page num and second cell in each row
 
             pdfWriterObj = PyPDF2.PdfFileWriter()
 
             pdfWriterObj.addPage(pdfpage) #add pdf page to resulting pdf file. saved farther.
 
-            if len(reqpagesl) == 1:
-                till = min(num_in_list + step,numofpages)
-                            #take no more than last index in imageslist
-            
+            if pagenum < pagenumlist[-1]: #if it is not the last value in pagenumlist
+                        
+                till = pagenumlist[pagenumlist.index(pagenum)+1]-1 #next page-1 in pagenumlist
+             
             else:
-                if pagenum < pagenumlist[-1]: 
-                            #if it is not the last value in pagenumlist
-                    till = min(
-                                pagenumlist[pagenumlist.index(pagenum)+1]-1,
-                                numofpages
-                              ) 
-                            #take the next param in list but no more than last page in imageslist
-                
-                else:
-                    till = numofpages
-                #
+            
+                till = numofpages #not to take last page - 1 but take the last page only
             #
 
-            if till-num_in_list > 1: 
-                            # in case there should be several pages in resulting pdf
+            if till-num_in_list > 1: # in case there should be several pages in resulting pdf
+                
                 i=0
                 
                 for i in range(num_in_list+1,till,1):
                     pdfWriterObj.addPage(pdfReaderObj.getPage(i))
-                #                
+                #
+            #
+            else:
+                pass # if each page to take that there is no appending of other images
             #
 
-            pdfOutputFile = open('result\\' + str(pagenum) + "_" + res[0] + '.pdf', 'wb')
+            pdfOutputFile = open(pagepath, 'wb')
             
             pdfWriterObj.write(pdfOutputFile)
             
             pdfOutputFile.close()
 
-            print(res[0])
-        #
-        
-        for entry in os.scandir(r'.\mid'):
-            os.unlink(entry.path)
-        #
+            reslist.append('=hyperlink("' + str(pagenum) + "_" + reslist[1] + '.pdf")')
 
-        for entry in os.scandir(r'.\demo'):
-            os.unlink(entry.path)
+            rescsvstr += ','.join(reslist) + '\n'
+
         #
 
-        for entry in os.scandir(r'.\drafts'):
-            os.unlink(entry.path)
-        #
+        with open(resdir.name + '\\result.csv',mode="w") as resultcsv: #create CSV file to store results. previous existing was removed
+            resultcsv.write(rescsvstr)
+        #        
 
-        randnum = str(random.randint(1000, 10000))
+        zipbite = io.BytesIO()
 
-        zipname = randnum + '.zip'
+        zipres = zipfile.ZipFile(zipbite, mode='a')
 
-        resf = zipfile.ZipFile(file = zipname, mode='a')
+        for entry in os.scandir(resdir.name):
 
-        for entry in os.scandir(r'.\result'):
-            if entry.name.find('.pdf') != -1:
-                resf.write(entry)
+            if entry.name.find('.pdf') != -1 or entry.name.find('.csv') != -1:
+                
+                zipres.write(entry)
             #
-            os.unlink(entry.path)
         #
 
-        resf.close()
+        zipres.close()
 
-        with open(zipname,mode='rb') as resfile:
-            resread = resfile.read()
-        #
-        
-        resf64 = base64.b64encode(resread)
+        draftdir.cleanup()
+        resdir.cleanup()
 
-        os.unlink(zipname)
+        zipbite.seek(0)
 
-        return resf64
-        
+        res = base64.b64encode(zipbite.read())
+
+        zipdir.cleanup()
+
+        return(res.decode())        
     #
 #
