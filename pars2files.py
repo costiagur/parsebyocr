@@ -7,6 +7,7 @@ import do_ocr
 import tempfile
 import json
 import base64
+import re
 
 def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth, 
     rollangle=0, brightnessrate=1.0, sharpnessrate=1.0, contrastrate=1.0, boxblur=0, enlargerate=2, 
@@ -213,8 +214,10 @@ def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth,
 
                 reslist.append(str(firstres)) #each next cell in data row
             #
+            
+            filename = re.sub('[^a-zA-Z0-9א-ת_]', '_', reslist[1]) #file named by page num and second cell in each row
 
-            pagepath = resdir.name + '\\' + str(pagenum) + "_" + reslist[1] + '.pdf' #file named by page num and second cell in each row
+            pagepath = resdir.name + '\\' + str(pagenum) + "_" + filename + '.pdf' 
 
             pdfWriterObj = PyPDF2.PdfFileWriter()
 
