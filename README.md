@@ -7,6 +7,6 @@ The project uses several third party applications:
 1. Tesseract and pytesseract which do the OCR magic. Information can be found here: https://pypi.org/project/pytesseract/
 2. pdf2image which does the conversion of pdf pages to images. Information can be found here: https://pypi.org/project/pdf2image/
 3. Pillow which does the magic of image manipulation. Information can be found here: https://pypi.org/project/Pillow/
-4. PyPDF2 which splittes and merges scanned pdf files. Information can be found here: https://pypi.org/project/PyPDF2/
+4. PyPDF2 which splits and merges scanned pdf files. Information can be found here: https://pypi.org/project/PyPDF2/
 
 Enjoy.
