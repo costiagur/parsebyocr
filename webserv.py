@@ -1,9 +1,17 @@
 import http.server
 import urllib
+import backholder
 
 class webserv(http.server.BaseHTTPRequestHandler):
 
     def processing(self,querydict,customfunc):
+        
+        if 'request' in list(querydict):
+            if querydict['request'][1] == 'close':
+                backholder.holderclose()
+            #
+        #
+
         return customfunc(querydict)
     #
 

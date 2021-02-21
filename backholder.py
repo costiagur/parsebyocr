@@ -2,6 +2,9 @@ import tkinter
 import tkinter.ttk
 
 def holderrun(naming="UIhtml"):
+
+    global root
+
     root = tkinter.Tk()
 
     root.title(naming)
@@ -11,4 +14,8 @@ def holderrun(naming="UIhtml"):
     tkinter.ttk.Label(frame,text="Running " + naming).grid(column=1,row=1)
 
     root.mainloop() #holds server from going to shutdown in the next command
+#
+
+def holderclose():
+    root.destroy()
 #

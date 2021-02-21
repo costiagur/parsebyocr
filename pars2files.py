@@ -9,7 +9,7 @@ import json
 import base64
 import re
 
-def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth, 
+def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth, 
     rollangle=0, brightnessrate=1.0, sharpnessrate=1.0, contrastrate=1.0, boxblur=0, enlargerate=2, 
     hsa=0, vsa=0, dpirate=400, pagesin="1", outdir = '', langset='heb', onlynum=False):
 
@@ -60,10 +60,10 @@ def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth,
 
         draftdir = tempfile.TemporaryDirectory()
 
-        images = convert_from_bytes(sourcefile,dpi=dpirate,
+        images = convert_from_bytes(sourcelist[0],dpi=dpirate,
                                     output_folder=draftdir.name,
                                     single_file=True) #converts only first page into image: single_file=True
-        
+
         resultdict = dict()
 
         key = 0
@@ -112,148 +112,151 @@ def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth,
 
         draftdir = tempfile.TemporaryDirectory()
         resdir = tempfile.TemporaryDirectory()
-        zipdir = tempfile.TemporaryDirectory()
+        #zipdir = tempfile.TemporaryDirectory()
         rescsvstr = ""
                 
         rescsvstr += titlestr + "\n" # write header row into CSV file
 
         reslist = []
 
-        pagenumlist = [1] # in any case first page should be present
+        for docfile in sourcelist: #For each uploaded PDF file
 
-        i = 0
+            pagenumlist = [1] # in any case first page should be present
 
-        pdfReaderObj = PyPDF2.PdfFileReader(io.BytesIO(sourcefile))
+            i = 0
 
-        numofpages = pdfReaderObj.numPages
+            pdfReaderObj = PyPDF2.PdfFileReader(io.BytesIO(docfile))
+
+            numofpages = pdfReaderObj.numPages
 
 
-        #create list of pages to cut at**********************************************
+            #create list of pages to cut at**********************************************
 
-        if len(pagesin.split(",")) == 1: #if user requested each X page, like every page or every second page
+            if len(pagesin.split(",")) == 1: #if user requested each X page, like every page or every second page
 
-            divisor = int(pagesin)
-            #print('divisor: ' + str(divisor))
+                divisor = int(pagesin)
+                #print('divisor: ' + str(divisor))
 
-            #print('len(imageslist): ' + str(numofpages))
+                #print('len(imageslist): ' + str(numofpages))
 
-            for i in range(1,numofpages+1,1): 
+                for i in range(1,numofpages+1,1): 
 
-                #print('i: ' + str(i))   
+                    #print('i: ' + str(i))   
+                    
+                    if i % divisor == 0 and (i+1) not in pagenumlist: #if devisable and not already in page list
+                    
+                        if i+1 <= numofpages:
+                            pagenumlist.append(i+1) #divisable by 3, means pages 1,4,7, meaning 3+1, 6+1
+                        #                                        #anyway not more that len(imagelist)
+                    #
+                #
+            
+            elif len(pagesin.split(",")) > 1: # if user requested an array of pages 
                 
-                if i % divisor == 0 and (i+1) not in pagenumlist: #if devisable and not already in page list
+                pagesarr = pagesin.split(",")
                 
-                    if i+1 <= numofpages:
-                        pagenumlist.append(i+1) #divisable by 3, means pages 1,4,7, meaning 3+1, 6+1
-                    #                                        #anyway not more that len(imagelist)
+                pagesarr = list(map(int,pagesarr)) # convert values to integers
+                
+                pagesarr.sort() # sort pages in ascending order     
+
+                for i in pagesarr: #remake pagesarr, so that will include page 1 and last page be numofpages
+                    
+                    if i not in pagenumlist and i <= numofpages:
+                        pagenumlist.append(i)
+
+                    #
                 #
             #
-        
-        elif len(pagesin.split(",")) > 1: # if user requested an array of pages 
-            
-            pagesarr = pagesin.split(",")
-            
-            pagesarr = list(map(int,pagesarr)) # convert values to integers
-            
-            pagesarr.sort() # sort pages in ascending order     
 
-            for i in pagesarr: #remake pagesarr, so that will include page 1 and last page be numofpages
+            #print(pagenumlist)
+
+            #Get pages to OCR ***********************************************************
+
+            for pagenum in pagenumlist: #for each page to be taken
+
+                reslist.clear() #each row of CSV file is made as list to be joined later. Therefore clear it and start using.
+
+                num_in_list = pagenum-1 #for index in list which start with 0
+
+                pdfpage = pdfReaderObj.getPage(num_in_list) #get page
+
+                pdfWriterObj = PyPDF2.PdfFileWriter() # 1 convert page object into pdf file to convert it to img later
+                                                    # deirect ByteIO
+                pdfWriterObj.addPage(pdfpage) # 2
                 
-                if i not in pagenumlist and i <= numofpages:
-                    pagenumlist.append(i)
+                pdfOutputFile = open(draftdir.name + "\\mid.pdf", 'wb') # 3
+                
+                pdfWriterObj.write(pdfOutputFile) # 4
+                
+                pdfOutputFile.close() # 5
 
+                img = convert_from_path(draftdir.name + "\\mid.pdf", dpi=dpirate, output_folder=draftdir.name, single_file=True) #get its image
+
+                reslist.append(str(pagenum)) #first row in cell is page number
+
+                for key in areadict: #for each selected area in the img
+                
+                    firstres, firstimg = do_ocr.do_ocr(reqtype,
+                                    img[0],
+                                    areadict[key][0],
+                                    areadict[key][1],
+                                    areadict[key][2],
+                                    areadict[key][3],
+                                    canvwidth,
+                                    canvheight,
+                                    rollangle,
+                                    brightnessrate,
+                                    sharpnessrate,
+                                    contrastrate,
+                                    boxblur,
+                                    enlargerate,
+                                    hsa, vsa,
+                                    langset,
+                                    onlynum)
+
+                    reslist.append(str(firstres)) #each next cell in data row
                 #
-            #
-        #
-
-        #print(pagenumlist)
-
-        #Get pages to OCR ***********************************************************
-
-        for pagenum in pagenumlist: #for each page to be taken
-
-            reslist.clear() #start data row to CSV file
-
-            num_in_list = pagenum-1 #for index in list which start with 0
-
-            pdfpage = pdfReaderObj.getPage(num_in_list) #get page
-
-            pdfWriterObj = PyPDF2.PdfFileWriter() # 1 convert page object into pdf file to convert it to img later
-                                                # deirect ByteIO
-            pdfWriterObj.addPage(pdfpage) # 2
-            
-            pdfOutputFile = open(draftdir.name + "\\mid.pdf", 'wb') # 3
-            
-            pdfWriterObj.write(pdfOutputFile) # 4
-            
-            pdfOutputFile.close() # 5
-
-            img = convert_from_path(draftdir.name + "\\mid.pdf", dpi=dpirate, output_folder=draftdir.name, single_file=True) #get its image
-
-            reslist.append(str(pagenum)) #first row in cell is page number
-
-            for key in areadict: #for each selected area in the img
-            
-                firstres, firstimg = do_ocr.do_ocr(reqtype,
-                                img[0],
-                                areadict[key][0],
-                                areadict[key][1],
-                                areadict[key][2],
-                                areadict[key][3],
-                                canvwidth,
-                                canvheight,
-                                rollangle,
-                                brightnessrate,
-                                sharpnessrate,
-                                contrastrate,
-                                boxblur,
-                                enlargerate,
-                                hsa, vsa,
-                                langset,
-                                onlynum)
-
-                reslist.append(str(firstres)) #each next cell in data row
-            #
-            
-            filename = re.sub('[^a-zA-Z0-9א-ת_]', '_', reslist[1]) #file named by page num and second cell in each row
-
-            pagepath = resdir.name + '\\' + str(pagenum) + "_" + filename + '.pdf' 
-
-            pdfWriterObj = PyPDF2.PdfFileWriter()
-
-            pdfWriterObj.addPage(pdfpage) #add pdf page to resulting pdf file. saved farther.
-
-            if pagenum < pagenumlist[-1]: #if it is not the last value in pagenumlist
-                        
-                till = pagenumlist[pagenumlist.index(pagenum)+1]-1 #next page-1 in pagenumlist
-             
-            else:
-            
-                till = numofpages #not to take last page - 1 but take the last page only
-            #
-
-            if till-num_in_list > 1: # in case there should be several pages in resulting pdf
                 
-                i=0
+                filename = re.sub('[^a-zA-Z0-9א-ת_]', '_', reslist[1]) #file named by page num and second cell in each row
+
+                pagepath = resdir.name + '\\' + str(pagenum) + "_" + filename + '.pdf' 
+
+                pdfWriterObj = PyPDF2.PdfFileWriter()
+
+                pdfWriterObj.addPage(pdfpage) #add pdf page to resulting pdf file. saved farther.
+
+                if pagenum < pagenumlist[-1]: #if it is not the last value in pagenumlist
+                            
+                    till = pagenumlist[pagenumlist.index(pagenum)+1]-1 #next page-1 in pagenumlist
                 
-                for i in range(num_in_list+1,till,1):
-                    pdfWriterObj.addPage(pdfReaderObj.getPage(i))
+                else:
+                
+                    till = numofpages #not to take last page - 1 but take the last page only
                 #
+
+                if till-num_in_list > 1: # in case there should be several pages in resulting pdf
+                    
+                    i=0
+                    
+                    for i in range(num_in_list+1,till,1):
+                        pdfWriterObj.addPage(pdfReaderObj.getPage(i))
+                    #
+                #
+                else:
+                    pass # if each page to take that there is no appending of other images
+                #
+
+                pdfOutputFile = open(pagepath, 'wb')
+                
+                pdfWriterObj.write(pdfOutputFile)
+                
+                pdfOutputFile.close()
+
+                reslist.append('=hyperlink("' + str(pagenum) + "_" + reslist[1] + '.pdf")')
+
+                rescsvstr += ','.join(reslist) + '\n'
+
             #
-            else:
-                pass # if each page to take that there is no appending of other images
-            #
-
-            pdfOutputFile = open(pagepath, 'wb')
-            
-            pdfWriterObj.write(pdfOutputFile)
-            
-            pdfOutputFile.close()
-
-            reslist.append('=hyperlink("' + str(pagenum) + "_" + reslist[1] + '.pdf")')
-
-            rescsvstr += ','.join(reslist) + '\n'
-
         #
 
         with open(resdir.name + '\\result.csv',mode="w") as resultcsv: #create CSV file to store results. previous existing was removed
@@ -281,7 +284,7 @@ def pars2files(reqtype, sourcefile, areadict, canvheight, canvwidth,
 
         res = base64.b64encode(zipbite.read())
 
-        zipdir.cleanup()
+        #zipdir.cleanup()
 
         return(res.decode())        
     #
