@@ -1,6 +1,25 @@
 ui = new Object();
 
-ui.host = 'http://localhost:54293'
+ui.host = 'http://localhost:58780'
+
+//********************************************************************************** */
+window.addEventListener('beforeunload',function(event){ //when closing browser, close python
+    var xhr = new XMLHttpRequest();
+    var fdata = new FormData();
+
+    fdata.append("request",'close'); //prepare files
+
+    xhr.open('POST',ui.host, true);
+
+    xhr.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            console.log(xhr.responseText);
+        }
+    };
+    
+    xhr.send(fdata);
+    
+})
 
 //*********************************************************************************** */
 
@@ -14,6 +33,8 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     var canvheight = imcanv.height; 
     var canvwidth = imcanv.width;
+
+    var loadedfiles = document.getElementById("docfile").files
 
     areaclass = document.getElementsByClassName("area"); 
 
@@ -62,7 +83,14 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     fdata.append("pagesin",document.getElementById("pagesin").value);
 
-    fdata.append("docfile",document.getElementById("docfile").files[0]);
+    //fdata.append("reshow",(document.getElementById("reshow").checked==true?1:0));
+
+    fdata.append("docsnum", loadedfiles.length);
+
+    for(let j=0; j < loadedfiles.length; j++){
+
+        fdata.append("docfile" + j, loadedfiles[j]);
+    }
 
     xhr.open('POST',ui.host,true)
 
@@ -80,6 +108,11 @@ ui.submit = function(reqtype){ //request can be insert or update
                 if(reqtype == 'firstrun'){
                     
                     console.log(this.responseText);
+
+                    if(!this.responseText.startsWith("{")){
+                        ui.showmodal("Error",this.responseText);
+                        return;
+                    }
 
                     let repobj = JSON.parse(this.responseText);
 
@@ -110,7 +143,7 @@ ui.submit = function(reqtype){ //request can be insert or update
        }
     };
 
-    xhr.send(fdata);     
+    xhr.send(fdata);         
 }
 
 //*********************************************************************************** */
@@ -123,6 +156,7 @@ ui.preload = function(){ //request can be insert or update
     const ctx = imcanvback.getContext("2d");
     var canvheight = imcanvback.height; 
     var canvwidth = imcanvback.width;
+    var loadedfiles = document.getElementById("docfile").files
 
     fdata.append("request",'preload'); //get first page for showing
 
@@ -132,8 +166,10 @@ ui.preload = function(){ //request can be insert or update
 
     fdata.append("vsa",document.getElementById("vsa").value);
 
-    fdata.append("docfile",document.getElementById("docfile").files[0]);
+    console.log("loaddedfiles.length: " + loadedfiles.length);
 
+    fdata.append("docfile0", loadedfiles[0]);
+    
     xhr.open('POST',ui.host,true)
 
     document.getElementById("loader").style.display='block'; //display loader
