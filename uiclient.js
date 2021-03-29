@@ -1,6 +1,6 @@
 ui = new Object();
 
-ui.host = 'http://localhost:58780'
+ui.host = 'http://localhost:50113'
 
 //********************************************************************************** */
 window.addEventListener('beforeunload',function(event){ //when closing browser, close python
@@ -28,6 +28,7 @@ ui.submit = function(reqtype){ //request can be insert or update
     var fdata = new FormData();
 
     var areaarr = [];
+    var relarr = [];
 
     const imcanv = document.getElementById('imcanv');
 
@@ -36,12 +37,20 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     var loadedfiles = document.getElementById("docfile").files
 
-    areaclass = document.getElementsByClassName("area"); 
+    areaclass = document.getElementsByClassName("area");
+    relclass = document.getElementsByClassName("rel"); 
 
     for (let i=0; i < areaclass.length;i++){
 
         if (areaclass[i].dataset["area"+i] != ''){
             areaarr.push(areaclass[i].dataset["area"+i]);
+
+            if(relclass[i].dataset["rel"+i] != ''){ //if areai exists, than check reli
+                relarr.push(relclass[i].dataset["rel"+i]);
+            }
+            else{
+                relarr.push('0,0,0,0') // in case relarea button was not clicked, insert 0,0,0,0. thus in any case relarea will be present 
+            }
         }
     }
 
@@ -51,14 +60,18 @@ ui.submit = function(reqtype){ //request can be insert or update
     }
 
     areastr = JSON.stringify(areaarr);
+    relstr = JSON.stringify(relarr)
 
-    //console.log(areastr);
+    console.log("areastr: "+ areastr);
+    console.log("relstr: "+ relstr);
 
     fdata.append("request",'prepare'); //prepare files
 
     fdata.append("reqtype",reqtype); //test run ot total run
 
     fdata.append("areastr",areastr);
+    
+    fdata.append("relstr",relstr);
 
     fdata.append("canvheight",canvheight);
 
@@ -107,7 +120,7 @@ ui.submit = function(reqtype){ //request can be insert or update
             else{
                 if(reqtype == 'firstrun'){
                     
-                    console.log(this.responseText);
+                    //console.log(this.responseText);
 
                     if(!this.responseText.startsWith("{")){
                         ui.showmodal("Error",this.responseText);
@@ -179,7 +192,7 @@ ui.preload = function(){ //request can be insert or update
             
             document.getElementById("loader").style.display='none'; //close loader
 
-            console.log(this.responseText)
+            //console.log(this.responseText)
 
             if(this.responseText.valueOf() < 1){
                 ui.showmodal('Error',this.responseText);
@@ -242,15 +255,19 @@ ui.download = function(filename, filetext){
 }
 
 //********************************************************************************************** */
-ui.insertpoint = function(num){
+ui.insertpoint = function(num,type){
 
-    var rgbarr = []
+    var rgbarr = new Array(2);
+    rgbarr[0] = new Array(3);
+    rgbarr[1] = new Array(3);
 
-    rgbarr[0] = 'rgba(51, 153, 51, 0.3)'
-    rgbarr[1] = 'rgba(51, 204, 51, 0.3)'
-    rgbarr[2] = 'rgba(102, 255, 51, 0.3)'
-    rgbarr[3] = 'rgba(204, 255, 51, 0.3)'
-    rgbarr[4] = 'rgba(204, 204, 0, 0.3)'
+    rgbarr[0][0] = 'rgba(51, 153, 51, 0.3)';
+    rgbarr[0][1] = 'rgba(51, 204, 51, 0.3)';
+    rgbarr[0][2] = 'rgba(102, 255, 51, 0.3)';
+
+    rgbarr[1][0] = 'rgba(204, 0, 0, 0.3)';
+    rgbarr[1][1] = 'rgba(230, 0, 0, 0.3)';
+    rgbarr[1][2] = 'rgba(255, 0, 0, 0.3)';
 
     var imcanvmiddle = document.getElementById('imcanvmiddle');
     var ctxmid = imcanvmiddle.getContext('2d');
@@ -259,9 +276,15 @@ ui.insertpoint = function(num){
     var pointarr = pointstr.split(",");
 
     ctxmid.clearRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1])
-    ctxmid.fillStyle = rgbarr[num];
+    ctxmid.fillStyle = rgbarr[type][num];
     ctxmid.fillRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1]);
 
-    document.getElementById("area"+num).dataset["area"+num] = pointstr;
-    document.getElementById("area"+num).style.color = rgbarr[num].slice(0,-4) + '1)';
+    if(type==0){ //in case of area setting
+        document.getElementById("area"+num).dataset["area"+num] = pointstr;
+        document.getElementById("area"+num).style.color = rgbarr[type][num].slice(0,-4) + '1)';
+    }
+    else if(type==1){ //in case of relative point setting
+        document.getElementById("rel"+num).dataset["rel"+num] = pointstr;
+        document.getElementById("rel"+num).style.color = rgbarr[type][num].slice(0,-4) + '1)';
+    }
 }

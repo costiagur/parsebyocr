@@ -32,14 +32,23 @@ def myfunc(obj,querydict):
         else:
             try:
                 arealist = json.loads(querydict['areastr'][1])
+                rellist = json.loads(querydict['relstr'][1])
                 areadict = dict()
+                reldict = dict()
                 doclist = []
                 
                 for i in range(0,len(arealist)):
                     areadict[i] = list(map(int,arealist[i].split(",")))
                 #
 
+                i=0
+
+                for i in range(0,len(rellist)):
+                    reldict[i] = list(map(int,rellist[i].split(",")))
+                #
+
                 print(areadict)
+                print(reldict)
 
                 for i in range(0,int(querydict['docsnum'][1])):
                     doclist.append(querydict['docfile' + str(i)][1])
@@ -48,6 +57,7 @@ def myfunc(obj,querydict):
                 msg = pars2files.pars2files(querydict['reqtype'][1],
                                         doclist,
                                         areadict,
+                                        reldict,
                                         querydict['canvheight'][1],
                                         querydict['canvwidth'][1],
                                         querydict['rollangle'][1],
@@ -66,6 +76,7 @@ def myfunc(obj,querydict):
             except Exception as err:
                 msg = "Error occured: " + str(err)
             #
+        #
     #
     
     return msg
