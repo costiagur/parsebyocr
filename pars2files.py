@@ -7,9 +7,12 @@ import do_ocr
 import tempfile
 import json
 import base64
+import relimg
 import re
+import sys
+ 
 
-def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth, 
+def pars2files(reqtype, sourcelist, areadict, reldict, canvheight, canvwidth, 
     rollangle=0, brightnessrate=1.0, sharpnessrate=1.0, contrastrate=1.0, boxblur=0, enlargerate=2, 
     hsa=0, vsa=0, dpirate=400, pagesin="1", outdir = '', langset='heb', onlynum=False):
 
@@ -48,6 +51,22 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
             areadict[key][1] = midval
         #
 
+        midval = 0
+
+        if reldict[key][2] < reldict[key][0]: #if the picture was chosen backwards
+            midval = reldict[key][2]
+            reldict[key][2] = reldict[key][0]
+            reldict[key][0] = midval
+        #
+
+        midval = 0
+
+        if reldict[key][3] < reldict[key][1]: #if the picture was chosen backwards
+            midval = reldict[key][3]
+            reldict[key][3] = reldict[key][1]
+            reldict[key][1] = midval
+        #
+
     #
 
     titlestr = titlestr + 'link\n'
@@ -70,14 +89,27 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
 
         for key in areadict: #keys 0-4
             
-            print(areadict[key])
-
+            print("firstrun - areadict[key] " + str(areadict[key]))
+            print("firstrun - reldict[key] " + str(reldict[key]))
+            
+            if reldict[key][0] == 0 and reldict[key][2] == 0:
+                relimgaddress = '0'
+            else:
+                relimgaddress = relimg.relimg(images[0],reldict[key][0],reldict[key][1],reldict[key][2],reldict[key][3],
+                                    canvwidth,canvheight,key,draftdir.name)
+            #
+            
             firstres, firstimg = do_ocr.do_ocr(reqtype, 
                                         images[0], 
                                         areadict[key][0],
                                         areadict[key][1],
                                         areadict[key][2],
-                                        areadict[key][3], 
+                                        areadict[key][3],
+                                        reldict[key][0],
+                                        reldict[key][1],
+                                        reldict[key][2],
+                                        reldict[key][3],
+                                        relimgaddress, 
                                         canvwidth,
                                         canvheight,
                                         rollangle, 
@@ -87,8 +119,7 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
                                         boxblur,
                                         enlargerate,
                                         hsa, vsa,
-                                        langset='heb',
-                                        onlynum=False)
+                                        langset)
         
             imgpath = io.BytesIO()
             firstimg.save(imgpath,'PNG')
@@ -96,6 +127,10 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
             imgpath.seek(0)
 
             imgpathres = b'data:image/png;base64,' +  base64.b64encode(imgpath.read())
+
+            if onlynum == True: #if number is requested
+                firstres = re.sub(r'\D', '', firstres)
+            #
 
             resultdict[key] = [firstres, imgpathres.decode()] #dictinary of each area, with its ocr and its image path
         #
@@ -118,6 +153,26 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
         rescsvstr += titlestr + "\n" # write header row into CSV file
 
         reslist = []
+        relimglist = []
+
+        ini_img = convert_from_bytes(sourcelist[0],dpi=dpirate,
+                                    output_folder=draftdir.name,
+                                    single_file=True) #converts only first page into image: single_file=True
+
+
+        for key in list(reldict): #create list of addresses to images to be used later
+
+            if reldict[key][0] == 0 and reldict[key][2] == 0:
+                relimglist.insert(key,'0')
+            else:
+                pathrelimg = relimg.relimg(ini_img[0],reldict[key][0],reldict[key][1],reldict[key][2],reldict[key][3],
+                                    canvwidth,canvheight,key,draftdir.name)
+
+                relimglist.insert(key,pathrelimg)
+            #
+              
+            print("relimglist " + str(key) + " - " + relimglist[key])
+        #
 
         for docfile in sourcelist: #For each uploaded PDF file
 
@@ -195,13 +250,18 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
                 reslist.append(str(pagenum)) #first row in cell is page number
 
                 for key in areadict: #for each selected area in the img
-                
+
                     firstres, firstimg = do_ocr.do_ocr(reqtype,
                                     img[0],
                                     areadict[key][0],
                                     areadict[key][1],
                                     areadict[key][2],
                                     areadict[key][3],
+                                    reldict[key][0],
+                                    reldict[key][1],
+                                    reldict[key][2],
+                                    reldict[key][3],
+                                    relimglist[key],
                                     canvwidth,
                                     canvheight,
                                     rollangle,
@@ -211,13 +271,22 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
                                     boxblur,
                                     enlargerate,
                                     hsa, vsa,
-                                    langset,
-                                    onlynum)
+                                    langset)
+
+                    if onlynum == True: #if number is requested
+                        firstres = re.sub(r'\D', '', firstres)
+                    #
+
+                    print("totalrun -result- " + str(firstres))
 
                     reslist.append(str(firstres)) #each next cell in data row
                 #
                 
-                filename = re.sub('[^a-zA-Z0-9א-ת_]', '_', reslist[1]) #file named by page num and second cell in each row
+                print("initial filename: " + reslist[1])
+
+                filename = re.sub('\W+', '_', reslist[1]) #file named by page num and second cell in each row
+
+                print("final filename: " + filename)
 
                 pagepath = resdir.name + '\\' + str(pagenum) + "_" + filename + '.pdf' 
 
@@ -252,7 +321,7 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
                 
                 pdfOutputFile.close()
 
-                reslist.append('=hyperlink("' + str(pagenum) + "_" + reslist[1] + '.pdf")')
+                reslist.append('=hyperlink("' + str(pagenum) + "_" + filename + '.pdf")')
 
                 rescsvstr += ','.join(reslist) + '\n'
 
@@ -265,26 +334,35 @@ def pars2files(reqtype, sourcelist, areadict, canvheight, canvwidth,
 
         zipbite = io.BytesIO()
 
-        zipres = zipfile.ZipFile(zipbite, mode='a')
+        zipres = zipfile.ZipFile(zipbite, mode='w')
 
         for entry in os.scandir(resdir.name):
 
             if entry.name.find('.pdf') != -1 or entry.name.find('.csv') != -1:
                 
-                zipres.write(entry)
+                zipres.write(entry,os.path.basename(entry.name))
             #
         #
 
         zipres.close()
 
-        draftdir.cleanup()
         resdir.cleanup()
 
+        try:
+            draftdir.cleanup()
+        except:
+            for draftfile in os.scandir(draftdir.name):
+                try:
+                    os.unlink(draftfile)
+                except:
+                    print(sys.exc_info()[0])
+                #
+            #
+        #
+        
         zipbite.seek(0)
 
         res = base64.b64encode(zipbite.read())
-
-        #zipdir.cleanup()
 
         return(res.decode())        
     #
