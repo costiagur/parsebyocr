@@ -1,47 +1,48 @@
 import webserv
 import webbrowser
-from socketserver import ThreadingMixIn
-import threading
 import os
-import backholder
-import http.server
-import myfunc
-import random 
+from sys import argv
+import random
+import ctypes
+from myfunc import myfunc
 
 HOST = '127.0.0.1'
-PORT = random.randint(50000,60000)
+iniPORT = 50000
+newPORT = random.randint(50000,60000)
+CODESTR = "shirlimirli"
+runningport = iniPORT
+isrepliyed = 0
+
+print(argv)
+
+if len(argv) == 1:
+    querystr = 'null'
+else:
+    arglist = []
+
+    for eacharg in argv[1:]:
+        argarr = eacharg.split(":")
+        arglist.append('"' + str(argarr[0]) + '":"' + str(argarr[1]) + '"')
+    #
+
+    querystr = "{" + ",".join(arglist) + "}"
+#
 
 currentfolder =  os.path.dirname(os.path.realpath(__file__))
 
-with open(currentfolder + "/uiclient.js", "r") as jsfile:
-    existingjs = jsfile.readlines() #read all lines from uiclient,js file
-#
-with open(currentfolder + "/uiclient.js", "w") as jsfile: #insert ui.host in JS file with random PORT num
-    for jsline in existingjs:
-        if jsline.find("ui.host = 'http://localhost") != -1: #file existing ui.host line and replace it
-            jsfile.write("ui.host = 'http://localhost:%i'\n" %(PORT))
-        #
-        else:
-            jsfile.write(jsline) #all other lines write what was there
-        #
-    #
-#
+#ctypes.windll.user32.ShowWindow( ctypes.windll.kernel32.GetConsoleWindow(), 0)
 
 htmlfilepath = "file://" + currentfolder + "/index.html"
 
-class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
-    pass
+webbrowser.open(htmlfilepath) #open html file of the UI
+
+serv = webserv.HttpServer((HOST,iniPORT),webserv.Handler,CODESTR,newPORT,myfunc,querystr)
+
+while isrepliyed == 0:
+    isrepliyed = serv.run_once()
 #
 
-webbrowser.open(htmlfilepath,1,True) #open html file of the UI
+serv.close()
+serv = webserv.HttpServer((HOST,newPORT),webserv.Handler,'',newPORT,myfunc,querystr)
+serv.run_continuously()
 
-webserv.webserv.custmethod = myfunc.myfunc #provide my custom function to POST of webserver
-
-serv = ThreadedHTTPServer((HOST,PORT),webserv.webserv) #threading HTTPserver
-
-server_thread = threading.Thread(target=serv.serve_forever) #preparing thread because tkinter can't run in the same thread with httpserver
-server_thread.start()
-
-backholder.holderrun("Parse by OCR") #Run Tkinter to hold the server in the background
-
-serv.shutdown()

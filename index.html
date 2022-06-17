@@ -1,149 +1,244 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Parse by OCR</title>
+    <title>UI</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1"> 
 
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-
-    <style>
-      .loader { 
-        border: 16px solid #f3f3f3;
-        border-radius: 50%;
-        border-top: 16px solid #3498db;
-        width: 50px;
-        height: 50px;
-        animation: spin 2s linear infinite;
-        position: absolute; 
-        top: 30%; left: 50%; z-index:2;
-      }
-      
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-
-      a:link, a:visited {
-                        background-color: white;
-                        color: black;
-                        border: 2px solid green;
-                        padding: 10px 20px;
-                        text-align: center;
-                        text-decoration: none;
-                        display: inline-block;
-                        }
-      </style>
   </head>
 
-  <body>
-    <div id="loader" class="loader" style="display: none;"></div> <!--circle displayed while working-->
-
-    <div class="w3-cell-row">
-
-      <div class="w3-container w3-cell" >
-        <canvas id="imcanvback" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-2;" ></canvas>
-        <canvas id="imcanvmiddle" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-1;" ></canvas>
-        <canvas id="imcanv" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0;" ></canvas>
-
-      </div>
-
-      <div class="w3-container w3-cell" style="position: relative; left:700px">
-        <div class="w3-container">
-          <p>Select scanned pdf file:
-          <input type="file" id="docfile" multiple class="w3-btn w3-round w3-light-grey"></p>
-        </div>
-        <br/>
-        <div class="w3-container">
-          <input type="button" onclick='ui.preload()' class="w3-btn w3-round w3-light-grey" value="Show Image">
-          <input type="button" id="firstrun_bt" onclick='ui.submit("firstrun")' class="w3-btn w3-round w3-light-grey" value="Test Run" disabled>
-          <input type="button" id="totalrun_bt" onclick='ui.submit("totalrun")' class="w3-btn w3-round w3-light-grey" value="Parse to files"  disabled>
-        </div>
-        <br>
-        <div class="w3-container">
-          <table>
-            <tbody>
-              <tr>
-                <td>Rotate angle</td>
-                <td><input type="number" id="rollangle" value="0" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>Skew angle</td>
-                <td><span><input type="number" id="hsa" value="0" style="width: 5vw; margin-right: 2vw;float:left;" class="w3-input" title="horizontal"><input type="number" id="vsa" value="0" style="width: 5vw; margin-right: 2vw;" class="w3-input" title="vertical"></span></td>
-              </tr>
-              <tr>
-                <td>Brightness Enhance Rate</td>
-                <td><input type="number" id="brightnessrate" value="20" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>Contrast Enhance Rate</td>
-                <td><input type="number" id="contrastrate" value="10" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>Box Blur Pixel Radius</td>
-                <td><input type="number" id="boxblur" value="1" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>OCR Language</td>
-                <td><input type="text" id="lang" value="heb" class="w3-input"></td>
-              </tr>
-              <tr>
-                <td>Each x page or pages seperated by comma</td>
-                <td><input type="text" id="pagesin" value="1" class="w3-input"></td>
-              </tr>
-              <!--<tr>
-                <td>Stop each x page</td>
-                <td><input type="checkbox" id="reshow" class="w3-input"></td>
-              </tr>-->
-            </tbody>
-          </table>
-          <table>
-            <tbody>
-              <tr style="display: none;">
-                <td>PointsXY</td>
-                <td id="pointsxy"></td>
-              </tr>
-              <tr>
-                <td><a class = "area" href="javascript:void(0)" id="area0" onclick="ui.insertpoint(0,0)" data-area0="">Area 1</a>&nbsp;</td>
-                <td><a class = "rel" href="javascript:void(0)" id="rel0" onclick="ui.insertpoint(0,1)" data-rel0="">Relative 1</a>&nbsp;</td>
-                <td id="ocr0"></td>
-                <td><canvas id="rescanv0" style="padding: 0px;"></canvas></td>  
-              </tr>
-              <tr>
-                <td><a class = "area" href="javascript:void(0)" id="area1" onclick="ui.insertpoint(1,0)" data-area1="">Area 2</a>&nbsp;</td>
-                <td><a class = "rel" href="javascript:void(0)" id="rel1" onclick="ui.insertpoint(1,1)" data-rel1="">Relative 2</a>&nbsp;</td>
-                <td id="ocr1"></td>
-                <td><canvas id="rescanv1" style="padding: 0px;"></canvas></td>
-              </tr>
-              <tr>
-                <td><a class = "area" href="javascript:void(0)" id="area2" onclick="ui.insertpoint(2,0)" data-area2="">Area 3</a>&nbsp;</td>
-                <td><a class = "rel" href="javascript:void(0)" id="rel2" onclick="ui.insertpoint(2,1)" data-rel2="">Relative 3</a>&nbsp;</td>
-                <td id="ocr2"></td>
-                <td><canvas id="rescanv2" style="padding: 0px;"></canvas></td>
-              </tr>
-            </tbody>
-          </table> 
-        </div>
-      </div>
-    </div>
-
-    <div id="modal_out" class="w3-modal w3-animate-opacity">
-      <div class="w3-modal-content w3-card-4" style="width: 50%">
-        <header class="w3-container w3-light-grey" style="text-align: center"> 
-          <span onclick="document.getElementById('modal_out').style.display='none'" class="w3-btn w3-large w3-display-topright">&times;</span>
-          <h3 id="header_out">Modal Header</h3>
-        </header>
-        <div class="w3-container">
-          <p id="body_out"></p>
-        </div>
-        <footer class="w3-container w3-light-grey">
-        </footer>
-      </div>
-    </div>
+  <style>
+    .loader { 
+      border: 16px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 16px solid #3498db;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      position: absolute; 
+      top: 30%; left: 50%; z-index:2;
+    }
     
-  </body>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
 
-  <script src='canvas.js'></script>
-  <script src='uiclient.js'></script>
+    a:link, a:visited {
+                      background-color: white;
+                      color: black;
+                      border: 2px solid green;
+                      padding: 10px 10px;
+                      text-align: center;
+                      text-decoration: none;
+                      display: inline-block;
+                      }
+    </style>
+</head>
+
+<body>
+  <div id="loader" class="loader" style="display: none;"></div> <!--circle displayed while working-->
+
+    <div class="w3-container w3-cell" style="position: absolute; top: 0; left: 0;">
+      <canvas id="imcanvback" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-2;" ></canvas>
+      <canvas id="imcanvmiddle" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0; z-index:-1;" ></canvas>
+      <canvas id="imcanv" width=794 height=1123 style="border:1px solid #000000; padding: 0px; position: absolute; top: 0; left: 0;" ></canvas>
+    </div>
+
+    <div class="w3-container w3-cell" style="position: absolute; left: 795px; top: 0px;">
+        <p>Select pdf file: <span><input type="file" id="pdffiles_in" multiple class="w3-btn w3-round w3-light-grey"></span></p>
+        <p>Select representative page to mark the data spots &NonBreakingSpace;<span><input type="number" id="testpagenum_in" value="1"></span></p>
+      <p>
+        <button onclick='ui.preload()' class="w3-btn w3-round w3-light-grey">Get Representative page</button>
+        <button id="firstrun_bt" onclick='ui.submit("testrun")' class="w3-btn w3-round w3-light-grey" disabled>Test</button>
+        <button id="totalrun_bt" onclick='ui.submit("totalrun")' class="w3-btn w3-round w3-light-grey" disabled>Run</button> 
+      </p>
+        <table>
+          <tbody>
+            <tr>
+              <td>Rotate angle</td>
+              <td><input type="number" id="rollangle" value="0" class="w3-input"></td>
+            </tr>
+            <tr>
+              <td>Skew angle</td>
+              <td><span><input type="number" id="hsa" value="0" style="width: 5vw; margin-right: 2vw;float:left;" class="w3-input" title="horizontal"><input type="number" id="vsa" value="0" style="width: 5vw; margin-right: 2vw;" class="w3-input" title="vertical"></span></td>
+            </tr>
+            <tr>
+              <td>Brightness Enhance Rate</td>
+              <td><input type="number" id="brightnessrate" value="20" class="w3-input"></td>
+            </tr>
+            <tr>
+              <td>Contrast Enhance Rate</td>
+              <td><input type="number" id="contrastrate" value="10" class="w3-input"></td>
+            </tr>
+            <tr>
+              <td>Enlarge rate</td>
+              <td><input type="number" id="enlragerate" value="1" class="w3-input"></td>
+            </tr>
+            <tr>
+              <td>OCR Language</td>
+              <td><input type="text" id="lang" value="heb" class="w3-input"></td>
+            </tr>
+          </tbody>
+        </table>
+            <p style="display:block">
+              PointsXY_<span id="pointsxy"></span>
+            </p>
+        <table>
+          <tbody>
+            <tr>
+              <td>
+                Mark Spots 1:
+              </td>
+              <td>
+                <a class="area" href="javascript:void(0)" id="area0" onclick="ui.insertpoint(0,0)" data-area="">Data area 0</a>
+              </td>
+              <td>
+                <a class="rel" href="javascript:void(0)" id="rel0" onclick="ui.insertpoint(0,1)" data-rel="">Relative to area 0</a>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Data Uses:
+              </td>
+              <td>
+                Name file by it:<span><input type="checkbox" id="nameby_0" checked></span>
+              </td>
+              <td>  
+                Cut pages by it:<span><input type="checkbox" id="selectpage_0" checked></span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Results of test run:
+              </td>
+              <td id="ocr0"></td>
+              <td><canvas id="rescanv0" style="padding: 0px;"></canvas></td>
+            </tr>
+            <tr>
+              <td>
+                Mark Spots 2:
+              </td>
+              <td>
+                <a class="area" href="javascript:void(0)" id="area1" onclick="ui.insertpoint(1,0)" data-area="">Data area 1</a>
+              </td>
+              <td>
+                <a class="rel" href="javascript:void(0)" id="rel1" onclick="ui.insertpoint(1,1)" data-rel="">Relative to area 1</a>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Data Uses:
+              </td>
+              <td>
+                Name file by it:<span><input type="checkbox" id="nameby_1"></span>
+              </td>
+              <td>
+                Cut pages by it:<span><input type="checkbox" id="selectpage_1"></span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Results of test run:
+              </td>
+              <td id="ocr1"></td>
+              <td><canvas id="rescanv1" style="padding: 0px;"></canvas></td>
+            </tr>
+            <tr>
+              <td>
+                Mark Spots 3:
+              </td>
+              <td>
+                <a class="area" href="javascript:void(0)" id="area2" onclick="ui.insertpoint(2,0)" data-area="">Data area 2</a>
+              </td>
+              <td>
+                <a class="rel" href="javascript:void(0)" id="rel2" onclick="ui.insertpoint(2,1)" data-rel="">Relative to area 2</a>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Data Uses:
+              </td>
+              <td>
+                Name file by it:<span><input type="checkbox" id="nameby_2"></span>
+              </td>
+              <td>
+                Cut pages by it:<span><input type="checkbox" id="selectpage_2"></span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Results of test run:
+              </td>
+              <td id="ocr2"></td>
+              <td><canvas id="rescanv2" style="padding: 0px;"></canvas></td>
+            </tr>
+            <tr>
+              <td>
+                Mark Spots 4:
+              </td>
+              <td>
+                <a class="area" href="javascript:void(0)" id="area3" onclick="ui.insertpoint(3,0)" data-area="">Data area 3</a>
+              </td>
+              <td>
+                <a class="rel" href="javascript:void(0)" id="rel3" onclick="ui.insertpoint(3,1)" data-rel="">Relative to area 3</a>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Data Uses:
+              </td>
+              <td>
+                Name file by it:<span><input type="checkbox" id="nameby_3" ></span>
+              </td>
+              <td>
+                Cut pages by it:<span><input type="checkbox" id="selectpage_3"></span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Results of test run:
+              </td>
+              <td id="ocr3"></td>
+              <td><canvas id="rescanv3" style="padding: 0px;"></canvas></td>
+            </tr>
+            <tr>
+              <td>
+                Mark Spots 5:
+              </td>
+              <td>
+                <a class="area" href="javascript:void(0)" id="area4" onclick="ui.insertpoint(4,0)" data-area="">Data area 4</a>
+              </td>
+              <td>
+                <a class="rel" href="javascript:void(0)" id="rel4" onclick="ui.insertpoint(4,1)" data-rel="">Relative to area 4</a>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Data Uses:
+              </td>
+              <td>
+                Name file by it:<span><input type="checkbox" id="nameby_4" ></span>
+              </td>
+              <td>
+                Cut pages by it:<span><input type="checkbox" id="selectpage_4" ></span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Results of test run:
+              </td>
+              <td id="ocr4"></td>
+              <td><canvas id="rescanv4" style="padding: 0px;"></canvas></td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+</body>
+
+<script src='canvas.js'></script>
+
+<script src='uiclient.js'></script>
 
 </html>

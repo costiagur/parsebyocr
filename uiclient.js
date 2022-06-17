@@ -1,6 +1,6 @@
 ui = new Object();
 
-ui.host = 'http://localhost:50113'
+ui.port = 50000
 
 //********************************************************************************** */
 window.addEventListener('beforeunload',function(event){ //when closing browser, close python
@@ -9,7 +9,7 @@ window.addEventListener('beforeunload',function(event){ //when closing browser, 
 
     fdata.append("request",'close'); //prepare files
 
-    xhr.open('POST',ui.host, true);
+    xhr.open('POST',"http://localhost:"+ui.port, true);
 
     xhr.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
@@ -20,54 +20,138 @@ window.addEventListener('beforeunload',function(event){ //when closing browser, 
     xhr.send(fdata);
     
 })
+//********************************************************************************** */
+window.addEventListener('load',function(event){
+    ui.onloadfunc()
+})
+//******************************************************************************************** */
 
-//*********************************************************************************** */
+ui.onloadfunc = function(){
 
-ui.submit = function(reqtype){ //request can be insert or update
     var xhr = new XMLHttpRequest();
     var fdata = new FormData();
 
-    var areaarr = [];
-    var relarr = [];
+    fdata.append("request",'parsebyocr'); //parol
+
+    xhr.open('POST',"http://localhost:"+ui.port, true);
+
+    xhr.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            console.log(xhr.responseText);
+
+            res = JSON.parse(xhr.responseText);
+
+            ui.port = res.port;
+
+            if(res.args != null){
+
+                for(key of Object.keys(res.args)){
+
+                    if (document.getElementById(key)){ //if such id doesn't exists, than object will return null which is false
+            
+                        document.getElementById(key).value = res.args[key];
+                    }
+                }           
+            }
+        }
+    };
+    
+    xhr.send(fdata);
+}
+
+//*********************************************************************************** */
+ui.submit = function(reqtype){ //request can be insert or update
+    var xhr = new XMLHttpRequest();
+    var fdata = new FormData();
 
     const imcanv = document.getElementById('imcanv');
 
     var canvheight = imcanv.height; 
     var canvwidth = imcanv.width;
 
-    var loadedfiles = document.getElementById("docfile").files
+    var loadedfiles = document.getElementById("pdffiles_in").files
 
-    areaclass = document.getElementsByClassName("area");
-    relclass = document.getElementsByClassName("rel"); 
+    var areaarr = {};
+    var relarr = {};
+    var namearr = [];
+    var cutpagearr = [];
+    var j=0;
 
-    for (let i=0; i < areaclass.length;i++){
+    for (let i=0; i < 5 ;i++){ //assuming 5 fields. enlarge if added more
 
-        if (areaclass[i].dataset["area"+i] != ''){
-            areaarr.push(areaclass[i].dataset["area"+i]);
+        let areadata = document.getElementById(`area${i}`).dataset["area"]
+        let reldata = document.getElementById(`rel${i}`).dataset["rel"]
 
-            if(relclass[i].dataset["rel"+i] != ''){ //if areai exists, than check reli
-                relarr.push(relclass[i].dataset["rel"+i]);
+        if (areadata != ''){
+            midarr = areadata.split(",")
+            if (midarr[0]*1 > midarr[2]*1){
+                let midval = midarr[0]
+                midarr[0] = midarr[2]
+                midarr[2] = midval
+            }
+            if (midarr[1]*1 > midarr[3]*1){
+                let midval = midarr[1]
+                midarr[1] = midarr[3]
+                midarr[3] = midval
+            }
+
+            areaarr[j] = midarr;
+
+            if(reldata != ''){ //if areai exists, than check reli
+                midarr = reldata.split(",")
+                if (midarr[0]*1 > midarr[2]*1){
+                    let midval = midarr[0]
+                    midarr[0] = midarr[2]
+                    midarr[2] = midval
+                }
+                if (midarr[1]*1 > midarr[3]*1){
+                    let midval = midarr[1]
+                    midarr[1] = midarr[3]
+                    midarr[3] = midval
+                }
+                                        
+                relarr[j] = midarr;
             }
             else{
-                relarr.push('0,0,0,0') // in case relarea button was not clicked, insert 0,0,0,0. thus in any case relarea will be present 
+                alert(`Relative area was not set for ${i}th choise`); // in case relarea button was not clicked, insert 0,0,0,0. thus in any case relarea will be present 
+                return;
             }
+        
+            if (document.getElementById(`nameby_${i}`).checked == true){
+                namearr[j] = 1;
+            }
+            else{
+                namearr[j] = 0;
+            }
+
+            if(document.getElementById(`selectpage_${i}`).checked == true){
+                cutpagearr[j] = 1;
+            }
+            else{
+                cutpagearr[j] = 0;
+            }
+            j++;
         }
     }
 
     if(areaarr.length == 0){ // in case no area button was clicked, "click" first area button 
-        ui.insertpoint(0)
-        areaarr.push(document.getElementById("area0").dataset.area0)
+        alert('Error: No fields were chosen')
+        return
     }
-
-    areastr = JSON.stringify(areaarr);
-    relstr = JSON.stringify(relarr)
+    
+    var areastr = JSON.stringify(areaarr);
+    var relstr = JSON.stringify(relarr);
+    var namestr = JSON.stringify(namearr);
+    var cutpagestr = JSON.stringify(cutpagearr);
 
     console.log("areastr: "+ areastr);
     console.log("relstr: "+ relstr);
+    console.log("namestr: "+ namestr);
+    console.log("cutpagestr: "+ cutpagestr);
 
-    fdata.append("request",'prepare'); //prepare files
+    fdata.append("request",reqtype); //test run ot total run
 
-    fdata.append("reqtype",reqtype); //test run ot total run
+    //fdata.append("testpagenum_in",document.getElementById("testpagenum_in").value);
 
     fdata.append("areastr",areastr);
     
@@ -76,9 +160,6 @@ ui.submit = function(reqtype){ //request can be insert or update
     fdata.append("canvheight",canvheight);
 
     fdata.append("canvwidth",canvwidth);
-
-    //console.log("canvheight " + canvheight);
-    //console.log("canvwidth " + canvwidth);
 
     fdata.append("rollangle",document.getElementById("rollangle").value);
 
@@ -90,22 +171,18 @@ ui.submit = function(reqtype){ //request can be insert or update
 
     fdata.append("contrastrate",Number(document.getElementById("contrastrate").value)/10);
 
-    fdata.append("boxblur",document.getElementById("boxblur").value);
+    fdata.append("enlragerate",document.getElementById("enlragerate").value);
 
     fdata.append("lang",document.getElementById("lang").value);
 
-    fdata.append("pagesin",document.getElementById("pagesin").value);
-
-    //fdata.append("reshow",(document.getElementById("reshow").checked==true?1:0));
-
-    fdata.append("docsnum", loadedfiles.length);
-
-    for(let j=0; j < loadedfiles.length; j++){
-
-        fdata.append("docfile" + j, loadedfiles[j]);
+    for(let i=0; i < loadedfiles.length; i++){
+        fdata.append("pdffiles_"+ i, loadedfiles[i]);
     }
 
-    xhr.open('POST',ui.host,true)
+    fdata.append('namearr',namestr)
+    fdata.append('cutpagearr',cutpagestr)   
+
+    xhr.open('POST',"http://localhost:"+ui.port,true)
 
     document.getElementById("loader").style.display='block'; //display loader
 
@@ -115,19 +192,22 @@ ui.submit = function(reqtype){ //request can be insert or update
             document.getElementById("loader").style.display='none'; //close loader
 
             if(this.responseText.valueOf() < 1){
-                ui.showmodal('Error',this.responseText);
+                alert('Error: ' + this.responseText);
+                return;
             }
             else{
-                if(reqtype == 'firstrun'){
+                if(reqtype == 'testrun'){
                     
                     //console.log(this.responseText);
 
                     if(!this.responseText.startsWith("{")){
-                        ui.showmodal("Error",this.responseText);
+                        alert("Error: " + this.responseText);
                         return;
                     }
 
                     let repobj = JSON.parse(this.responseText);
+
+                    console.log(this.responseText)
 
                     for(i=0; i < Object.keys(repobj).length; i++){
 
@@ -156,7 +236,7 @@ ui.submit = function(reqtype){ //request can be insert or update
        }
     };
 
-    xhr.send(fdata);         
+    xhr.send(fdata);     
 }
 
 //*********************************************************************************** */
@@ -169,21 +249,23 @@ ui.preload = function(){ //request can be insert or update
     const ctx = imcanvback.getContext("2d");
     var canvheight = imcanvback.height; 
     var canvwidth = imcanvback.width;
-    var loadedfiles = document.getElementById("docfile").files
+    var loadedfiles = document.getElementById("pdffiles_in").files
 
-    fdata.append("request",'preload'); //get first page for showing
+    fdata.append("request",'preload');
+
+    fdata.append("testpagenum_in",document.getElementById("testpagenum_in").value);
 
     fdata.append("rollangle",document.getElementById("rollangle").value);
 
     fdata.append("hsa",document.getElementById("hsa").value);
 
     fdata.append("vsa",document.getElementById("vsa").value);
-
-    console.log("loaddedfiles.length: " + loadedfiles.length);
-
-    fdata.append("docfile0", loadedfiles[0]);
     
-    xhr.open('POST',ui.host,true)
+    for(let i=0; i<loadedfiles.length; i++){
+        fdata.append("pdffiles_" + i, loadedfiles[i]);    
+    }
+    
+    xhr.open('POST',"http://localhost:"+ui.port,true)
 
     document.getElementById("loader").style.display='block'; //display loader
 
@@ -195,7 +277,7 @@ ui.preload = function(){ //request can be insert or update
             //console.log(this.responseText)
 
             if(this.responseText.valueOf() < 1){
-                ui.showmodal('Error',this.responseText);
+                alert('Error: ' + this.responseText);
             }
             else {
                 var img = new Image();
@@ -218,23 +300,45 @@ ui.preload = function(){ //request can be insert or update
     xhr.send(fdata);     
 }
 
-//********************************************************************************************* */
+//********************************************************************************************** */
+ui.insertpoint = function(num,type){
 
-ui.showmodal = function(header,body){
+    var rgbarr = new Array(2);
 
-    document.getElementById("modal_out").style.display='block';
+    rgbarr[0] = new Array(3);
+    rgbarr[1] = new Array(3);
 
-    document.getElementById("header_out").innerHTML = header;
+    rgbarr[0][0] = 'rgba(51, 153, 51, 0.3)';
+    rgbarr[0][1] = 'rgba(51, 204, 51, 0.3)';
+    rgbarr[0][2] = 'rgba(102, 255, 51, 0.3)';
+    rgbarr[0][3] = 'rgba(153, 255, 51, 0.3)';
+    rgbarr[0][4] = 'rgba(204, 255, 51, 0.3)';
 
-    document.getElementById("body_out").innerHTML = body;
+    rgbarr[1][0] = 'rgba(204, 0, 0, 0.3)';
+    rgbarr[1][1] = 'rgba(230, 0, 0, 0.3)';
+    rgbarr[1][2] = 'rgba(250, 75, 0, 0.3)';
+    rgbarr[1][3] = 'rgba(250, 112, 0, 0.3)';
+    rgbarr[1][4] = 'rgba(250, 154, 0, 0.3)';
 
-    if(body != ''){
-        setTimeout(() => {
-            document.getElementById("modal_out").style.display='none';
-        },3000);
+    var imcanvmiddle = document.getElementById('imcanvmiddle');
+    var ctxmid = imcanvmiddle.getContext('2d');
+    
+    var pointstr = document.getElementById("pointsxy").innerHTML;
+    var pointarr = pointstr.split(",");
+
+    ctxmid.clearRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1])
+    ctxmid.fillStyle = rgbarr[type][num];
+    ctxmid.fillRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1]);
+
+    if(type==0){ //in case of area setting
+        document.getElementById("area"+num).dataset["area"] = pointstr;
+        document.getElementById("area"+num).style.color = rgbarr[type][num].slice(0,-4) + '1)';
+    }
+    else if(type==1){ //in case of relative point setting
+        document.getElementById("rel"+num).dataset["rel"] = pointstr;
+        document.getElementById("rel"+num).style.color = rgbarr[type][num].slice(0,-4) + '1)';
     }
 }
-
 //********************************************************************************************* */
 ui.download = function(filename, filetext){
 
@@ -254,37 +358,4 @@ ui.download = function(filename, filetext){
 
 }
 
-//********************************************************************************************** */
-ui.insertpoint = function(num,type){
 
-    var rgbarr = new Array(2);
-    rgbarr[0] = new Array(3);
-    rgbarr[1] = new Array(3);
-
-    rgbarr[0][0] = 'rgba(51, 153, 51, 0.3)';
-    rgbarr[0][1] = 'rgba(51, 204, 51, 0.3)';
-    rgbarr[0][2] = 'rgba(102, 255, 51, 0.3)';
-
-    rgbarr[1][0] = 'rgba(204, 0, 0, 0.3)';
-    rgbarr[1][1] = 'rgba(230, 0, 0, 0.3)';
-    rgbarr[1][2] = 'rgba(255, 0, 0, 0.3)';
-
-    var imcanvmiddle = document.getElementById('imcanvmiddle');
-    var ctxmid = imcanvmiddle.getContext('2d');
-    
-    var pointstr = document.getElementById("pointsxy").innerHTML;
-    var pointarr = pointstr.split(",");
-
-    ctxmid.clearRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1])
-    ctxmid.fillStyle = rgbarr[type][num];
-    ctxmid.fillRect(pointarr[0], pointarr[1], pointarr[2]-pointarr[0], pointarr[3]-pointarr[1]);
-
-    if(type==0){ //in case of area setting
-        document.getElementById("area"+num).dataset["area"+num] = pointstr;
-        document.getElementById("area"+num).style.color = rgbarr[type][num].slice(0,-4) + '1)';
-    }
-    else if(type==1){ //in case of relative point setting
-        document.getElementById("rel"+num).dataset["rel"+num] = pointstr;
-        document.getElementById("rel"+num).style.color = rgbarr[type][num].slice(0,-4) + '1)';
-    }
-}
