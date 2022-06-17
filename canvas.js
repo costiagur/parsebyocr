@@ -46,7 +46,7 @@ canv.mousemove = function(event){ //while drawing. set last point of drawing
         canv.ctx[canv.i].rect(canv.startx, canv.starty, canv.midx-canv.startx, canv.midy-canv.starty);
         canv.ctx[canv.i].fill();
         
-        document.getElementById("pointsxy").innerHTML = canv.startx + "," + canv.starty + "," + event.offsetX + "," + event.offsetY;
+        document.getElementById("pointsxy").innerHTML = canv.startx + "," + canv.starty + "," + event.offsetX + "," + event.offsetY + "," + document.getElementById("testpagenum_in").value;
     }
 };
   

@@ -1,83 +1,91 @@
+import base64
 import json
-import pars2files
-import firstpage
+from PyPDF2 import PdfFileMerger
+from io import BytesIO
+from firstpage import firstpage
+from testrun import testrun
+from totalrun import totalrun
+from tempfile import NamedTemporaryFile
+from os import unlink
 
-def myfunc(obj,querydict):
+def myfunc(queryobj):
 
-    #print(obj)
+    postdict = queryobj._POST()
+    filesdict = queryobj._FILES()
+    replymsg = b'Running'
+    print("POST = " + str(postdict) + "\n")
+    #print("FILES = " + str(filesdict) + "\n")
 
-    if querydict['request'][1] == 'preload':
-            
-        if querydict['docfile0'][1] == b'': #if no file was added, stop processing
-            msg = 'No file uploaded'
-            
-        else:
-            try:
-                msg = firstpage.showfirstpage(querydict['docfile0'][1],
-                                    int(querydict['rollangle'][1]),
-                                    int(querydict['hsa'][1]),
-                                    int(querydict['vsa'][1]),
-                                    400)
-        
-            except Exception as err:
-                msg = "Error occured: " + str(err)
-            #
+    def mergepdfs(filedictionary): 
+        merger = PdfFileMerger()
+        midpdflist = []
+        for filename in filedictionary:
+            midpdf = NamedTemporaryFile(mode="w+b",delete=False)
+            midpdf.write(filedictionary[filename][1])
+            midpdf.close()
+            midpdflist.append(midpdf.name)
         #
-    
-    elif querydict['request'][1] == 'prepare':
-            
-        if querydict['docfile0'][1] == b'': #if no file was added, don't delete it
-            msg = 'No file uploaded'
-            
+        for eachio in midpdflist:
+            merger.append(eachio)
+        #
+        mergedfile = BytesIO()
+        merger.write(mergedfile)
+        merger.close()    
+        mergedfile.seek(0)
+
+        for eachio in midpdflist:
+            unlink(eachio)
+        #
+        return mergedfile
+
+
+    #----------------- Preload - show image of a page in pdf file -------------------------------------------------
+
+    if postdict['request'] == 'preload':
+        if len(filesdict) == 1:
+            replymsg = firstpage(filesdict['pdffiles_0'][1],postdict['rollangle'],postdict['hsa'],postdict['vsa'],postdict['testpagenum_in'])
         else:
-            try:
-                arealist = json.loads(querydict['areastr'][1])
-                rellist = json.loads(querydict['relstr'][1])
-                areadict = dict()
-                reldict = dict()
-                doclist = []
-                
-                for i in range(0,len(arealist)):
-                    areadict[i] = list(map(int,arealist[i].split(",")))
-                #
+            mergedfile = mergepdfs(filesdict)
+            replymsg = firstpage(mergedfile.read(),postdict['rollangle'],postdict['hsa'],postdict['vsa'],postdict['testpagenum_in'])
+            mergedfile.close()
+        #
+    #
+        
 
-                i=0
-
-                for i in range(0,len(rellist)):
-                    reldict[i] = list(map(int,rellist[i].split(",")))
-                #
-
-                print(areadict)
-                print(reldict)
-
-                for i in range(0,int(querydict['docsnum'][1])):
-                    doclist.append(querydict['docfile' + str(i)][1])
-                #
-
-                msg = pars2files.pars2files(querydict['reqtype'][1],
-                                        doclist,
-                                        areadict,
-                                        reldict,
-                                        querydict['canvheight'][1],
-                                        querydict['canvwidth'][1],
-                                        querydict['rollangle'][1],
-                                        querydict['brightnessrate'][1],
-                                        1.0,
-                                        querydict['contrastrate'][1],
-                                        querydict['boxblur'][1],
-                                        2,
-                                        querydict['hsa'][1],
-                                        querydict['vsa'][1],
-                                        400,
-                                        querydict['pagesin'][1],
-                                        '',
-                                        querydict['lang'][1])
-            
-            except Exception as err:
-                msg = "Error occured: " + str(err)
-            #
+    # ------------ Test Run - first run to test results -------------------------------------------------------------
+    elif postdict['request'] == 'testrun':
+        if len(filesdict) == 1:
+            replymsg = testrun(filesdict['pdffiles_0'][1],postdict['areastr'],postdict['relstr'],postdict['canvheight'],postdict['canvwidth'],postdict['rollangle'],postdict['brightnessrate'], postdict['contrastrate'],postdict['enlragerate'], postdict['hsa'],postdict['vsa'],postdict['lang']) 
+        else:
+            mergedfile = mergepdfs(filesdict)
+            replymsg = testrun(mergedfile.read(),postdict['areastr'],postdict['relstr'],postdict['canvheight'],postdict['canvwidth'],postdict['rollangle'],postdict['brightnessrate'], postdict['contrastrate'],postdict['enlragerate'], postdict['hsa'],postdict['vsa'],postdict['lang'])
+            mergedfile.close()
         #
     #
     
-    return msg
+    # ------------ Total Run - first run to test results -------------------------------------------------------------
+    elif postdict['request'] == 'totalrun':
+
+        namearr = json.loads(postdict['namearr'])
+        cutpagearr = json.loads(postdict['cutpagearr'])
+
+        if len(filesdict) == 1:
+            replymsg = totalrun(filesdict['pdffiles_0'][1],postdict['areastr'],postdict['relstr'],postdict['canvheight'],postdict['canvwidth'],namearr,cutpagearr,postdict['rollangle'],postdict['brightnessrate'], postdict['contrastrate'],postdict['enlragerate'], postdict['hsa'],postdict['vsa'],postdict['lang'])
+        else:
+            mergedfile = mergepdfs(filesdict)
+            replymsg = totalrun(mergedfile.read(),postdict['areastr'],postdict['relstr'],postdict['canvheight'],postdict['canvwidth'],namearr,cutpagearr,postdict['rollangle'],postdict['brightnessrate'], postdict['contrastrate'],postdict['enlragerate'], postdict['hsa'],postdict['vsa'],postdict['lang'])
+            mergedfile.close()
+        #
+    #
+
+    # reply message should be encoded to be sent back to browser ----------------------------------------------
+    # encoding to base64 is used to send ansi hebrew data. it is decoded to become string and put into json.
+    # json is encoded to be sent to browser.
+
+    #file64enc = base64.b64encode(filesdict['doc1'][1])
+    #file64dec = file64enc.decode()
+
+    #replymsg = json.dumps([filesdict['doc1'][0],file64dec]).encode('UTF-8')
+
+    return replymsg
 #

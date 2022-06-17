@@ -5,13 +5,17 @@ import tempfile
 import base64
 from io import BytesIO
 
-def showfirstpage(scanfile, rollangle=0, hsa=0, vsa=0, dpirate=400): #mage image of the first page to display it in JS
+def firstpage(scanfile, rollangle='0', hsa='0', vsa='0', pagenum='1'): #mage image of the first page to display it in JS
+
+    rollangle = int(rollangle)
+    hsa = int(hsa)
+    vsa = int(vsa)
+    pagenum = int(pagenum)
 
     demofile = BytesIO()
     draftdir = tempfile.TemporaryDirectory()
     
-    images = convert_from_bytes(scanfile, dpi=dpirate, 
-                                output_folder= draftdir.name, single_file=True)
+    images = convert_from_bytes(scanfile, dpi=300, output_folder= draftdir.name,first_page=pagenum,last_page=pagenum)
 
     if hsa > 90:
         hsa = 90
@@ -38,15 +42,15 @@ def showfirstpage(scanfile, rollangle=0, hsa=0, vsa=0, dpirate=400): #mage image
                                   skew)
     # 
 
-    imgnew.save(demofile, format = "PNG")
+    imgnew.save(demofile, format = "JPEG")
     
     demofile.seek(0)
     
     resimg = base64.b64encode(demofile.read())
 
-    resimg = b'data:image/png;base64,' + resimg
+    resimg = b'data:image/jpeg;base64,' + resimg
 
     draftdir.cleanup()
 
-    return resimg.decode()  
+    return resimg
 #
