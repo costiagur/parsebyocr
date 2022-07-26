@@ -31,7 +31,7 @@ ui.onloadfunc = function(){
     var xhr = new XMLHttpRequest();
     var fdata = new FormData();
 
-    fdata.append("request",'parsebyocr'); //parol
+    fdata.append("request",'invoicebyocr'); //parol
 
     xhr.open('POST',"http://localhost:"+ui.port, true);
 
