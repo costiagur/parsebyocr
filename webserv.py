@@ -27,6 +27,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
             if('request' in postlist.keys()):
                 if postlist['request'] == 'close':
+                    common.root.quit()
                     exit()
                 #
                 elif postlist['request'] == self.CODESTR:
