@@ -66,6 +66,8 @@ hsa='0', vsa='0', langset='heb'):
 
         prevstr = 'firstpage' #in case first page will not meet conditions
         resstr = 'firstpage'
+        
+        common.infoobj = common.infopopup(common.root)
 
         for i in range(0,len(resimages),1): #for each page to be taken
 
@@ -176,9 +178,12 @@ hsa='0', vsa='0', langset='heb'):
                 pdfWriter.addPage(pdfReader.getPage(i)) #adding to existing pdfwriter
             #
             
+            common.infoobj.show(resstr)
             prevstr = resstr
         #
         
+        common.infoobj.close()
+
         print(csvlist)
 
         csvstr = "\n".join(csvlist)
