@@ -1,6 +1,6 @@
 import zipfile
 from pdf2image import convert_from_bytes
-from PyPDF2 import (PdfFileReader, PdfFileWriter)
+from PyPDF2 import (PdfReader, PdfWriter)
 from io import BytesIO
 from ocrit import ocrit
 from tempfile import (TemporaryDirectory,NamedTemporaryFile)
@@ -56,10 +56,10 @@ hsa='0', vsa='0', langset='heb'):
         scanfileio.write(scanfile)
         scanfileio.seek(0)
 
-        pdfReader = PdfFileReader(scanfileio)
-        print("num of pdf pages :" + str(pdfReader.numPages))
+        pdfReader = PdfReader(scanfileio)
+        print("num of pdf pages:" + str(len(pdfReader.pages)))
         
-        pdfWriter = PdfFileWriter()
+        pdfWriter = PdfWriter()
         csvlist = []
 
         print("len(resimages): " + str(len(resimages)))
@@ -121,11 +121,11 @@ hsa='0', vsa='0', langset='heb'):
 
 
                 if len(resimages) > 1 and i==0:
-                    pdfWriter.addPage(pdfReader.getPage(0))
+                    pdfWriter.addPage(pdfReader.pages(0))
                     
 
                 elif len(resimages) == 1 and i==0:
-                    pdfWriter.addPage(pdfReader.getPage(0))
+                    pdfWriter.addPage(pdfReader.pages(0))
                     
                     tempf = NamedTemporaryFile(mode='w+b',suffix=".pdf",delete=False)
                     pdfWriter.write(tempf)
@@ -142,8 +142,8 @@ hsa='0', vsa='0', langset='heb'):
                     zipres.write(tempf.name, arcname=re.sub('\W+', '_', prevstr) + ".pdf")
                     unlink(tempf.name)
                     
-                    pdfWriter = PdfFileWriter() #new pdfwriter to fill
-                    pdfWriter.addPage(pdfReader.getPage(i))
+                    pdfWriter = PdfWriter() #new pdfwriter to fill
+                    pdfWriter.addPage(pdfReader.pages(i))
 
                     tempf = NamedTemporaryFile(mode='w+b',suffix=".pdf",delete=False)
                     pdfWriter.write(tempf)
@@ -160,12 +160,12 @@ hsa='0', vsa='0', langset='heb'):
                     zipres.write(tempf.name, arcname=re.sub('\W+', '_', prevstr) + ".pdf")
                     unlink(tempf.name)
 
-                    pdfWriter = PdfFileWriter() #new pdfwriter to fill
-                    pdfWriter.addPage(pdfReader.getPage(i))
+                    pdfWriter = PdfWriter() #new pdfwriter to fill
+                    pdfWriter.addPage(pdfReader.pages(i))
                 #
 
             elif i==len(resimages)-1:#last page and conditions are not met on this page
-                pdfWriter.addPage(pdfReader.getPage(i))
+                pdfWriter.addPage(pdfReader.pages(i))
                     
                 tempf = NamedTemporaryFile(mode='w+b',suffix=".pdf",delete=False)
                 pdfWriter.write(tempf)
@@ -175,7 +175,7 @@ hsa='0', vsa='0', langset='heb'):
                 unlink(tempf.name)
 
             else: #conditions are not met
-                pdfWriter.addPage(pdfReader.getPage(i)) #adding to existing pdfwriter
+                pdfWriter.addPage(pdfReader.pages(i)) #adding to existing pdfwriter
             #
             
             common.infoobj.show(resstr)
